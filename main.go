@@ -96,6 +96,7 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
       continue
     }
     
+    // TODO: Should parse the text string to see if the first word matches a valid command, then pass the whole thing to the function for additional arg parsing.
     fun, present := commandsMap[msg.Text] // FIXME
     if !present {
       log.Printf("Unknown or unsupported command: %s", msg)
