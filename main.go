@@ -9,6 +9,8 @@ import {
 }
 
 // TODO: Need to persist data so that in case the bot dies, it reconnects to the right MUCs
+// In addition, persistance can let the bot know how much time is left on a particular spawn
+
 type commandFunc func(xmpp.Chat)string
 
 
