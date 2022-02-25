@@ -89,13 +89,21 @@ func pollChat(msgChan chan<- string, jabber *xmpp.Client) {
   for {
     msg, err := jabber.Recv()
     
-    fun, pres := commandsMap[msg] // FIXME
-    if !pres {
+    if _, ok := msg.(xmpp.Presence); ok {
+      // Skip presence messages, we don't care.
+      continue
+    }
+    
+    fun, present := commandsMap[msg.Text] // FIXME
+    if !present {
       log.Printf("Unknown or unsupported command: %s", msg)
       continue
     }
     
-    msgChan <- fun(msg)
+    var response xmpp.Chat
+    response.Text = fun(msg)
+    // TODO: Add the target of the message, determined using the input message
+    msgChan <- response
   }
 }
 
