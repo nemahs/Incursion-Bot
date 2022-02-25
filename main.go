@@ -76,6 +76,7 @@ func main() {
         if !ok {
           esiChan = make(chan string)
           log.Println("Restarting incursions routine after crash")
+          currentRetries--
           go pollIncursionsData(esiChan)
         } else {
           //Send msg here 
@@ -86,6 +87,7 @@ func main() {
         if !ok {
           jabberChan = make(chan string)
           log.Println("Restarting jabber routine after crash")
+          currentRetries--
           go pollChat(jabberChan)
         } else {
           //Send msg here
