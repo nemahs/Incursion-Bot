@@ -25,7 +25,7 @@ func listIncursions(c xmpp.Chat) string {
   panic("Not Implemented")
 }
 
-func cleanup(channel chan<- string) {
+func cleanup(channel chan<- xmpp.Chat) {
   err := recover()
   if err != nil {
     log.Println("Recovered from unexpected error: " + err)
@@ -69,7 +69,7 @@ func getIncursions() []Incursion, time.Time {
 }
 
 
-func pollIncursionsData(msg chan<- string) {
+func pollIncursionsData(msg chan<- xmpp.Chat) {
   defer cleanup(msg)
   var nextPollTime time.Time
   
@@ -85,7 +85,7 @@ func pollIncursionsData(msg chan<- string) {
   }
 }
 
-func pollChat(msgChan chan<- string, jabber *xmpp.Client) {
+func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
   defer cleanup(msgChan)
   
   for {
