@@ -15,6 +15,7 @@ const esiURL string = "https://esi.evetech.net/latest"
 
 // Util functions
 
+// Parse JSON results from HTTP response into a given struct
 func parseResults(resp *http.Response, resultStruct interface{}) error {
 	parsedBody, err := ioutil.ReadAll(resp.Body)
 
@@ -37,9 +38,21 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
   cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))
 	if err != nil { return err }
 
-	if resp.StatusCode == http.StatusNotModified {
+	switch resp.StatusCode {
+	case http.StatusNotModified: {
 		resultStruct = cache.Data
 		return nil
+	}
+  case http.StatusOK: break // Expected case
+	case http.StatusServiceUnavailable:
+		fallthrough
+	case http.StatusInternalServerError:
+		log.Println("ESI is having problems, returning cached data instead")
+		resultStruct = cache.Data
+		return nil
+	default: 
+		data, _ := ioutil.ReadAll(resp.Request.Body)
+		return fmt.Errorf("error %d received from server: %s", resp.StatusCode, string(data))
 	}
 
 	err = parseResults(resp, resultStruct)
@@ -62,8 +75,12 @@ type IncursionResponse struct {
 var incursionsCache CacheEntry
 func getIncursions() ([]IncursionResponse, time.Time) {
 	var result []IncursionResponse
-  req, _ := http.NewRequest("GET", esiURL + "/incursions/", nil)
-	err := cachedCall(req, &incursionsCache, &result)
+  req, err := http.NewRequest("GET", esiURL + "/incursions/", nil)
+	if err != nil {
+		log.Println("Failed to create request for incursions", err)
+		return result, incursionsCache.ExpirationTime
+	}
+	err = cachedCall(req, &incursionsCache, &result)
   
 	if err != nil {
 		log.Println("Error occured while getting incursions", err)
@@ -72,28 +89,67 @@ func getIncursions() ([]IncursionResponse, time.Time) {
   return result, incursionsCache.ExpirationTime
 }
 
+// --------- NAME RESOLUTION ---------
+
 type NameResponse struct {
   Category	string
   ID				int
   Name			string
 }
 
-// TODO: CACHE ALL THIS SHIT
+var cachedNames map[int]string = make(map[int]string)
 func getNames(ids []int) map[int]string {
   var responseData []NameResponse
 	result := make(map[int]string)
 
-	data, _ := json.Marshal(ids)
-  req, _ := http.NewRequest("POST", esiURL + "/universe/names/", bytes.NewBuffer(data))
-  resp, _ := http.DefaultClient.Do(req)
-	parseResults(resp, &responseData)
+	// Filter out names that we already know
+	var unknownIDs []int
+	for _, id := range ids {
+		cacheEntry, pres := cachedNames[id]
 
+		if !pres {
+			unknownIDs = append(unknownIDs, id)
+		} else {
+			result[id] = cacheEntry
+		}
+	}
+
+	// Find the remaining names
+	data, err := json.Marshal(unknownIDs)
+	if err != nil {
+		log.Println("Failed to marshal IDs into json", err)
+		return result
+	}
+
+  req, err := http.NewRequest("POST", esiURL + "/universe/names/", bytes.NewBuffer(data))
+	if err != nil {
+		log.Println("Failed to create name request", req)
+		return result
+	}
+
+  resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println("Failed HTTP request for names", err)
+		return result
+	}
+
+	err = parseResults(resp, &responseData)
+	if err != nil {
+		log.Println("Failed to parse name results", err)
+		return result
+	}
+
+
+	// Return result
 	for _, nameData := range responseData {
+		cachedNames[nameData.ID] = nameData.Name
 		result[nameData.ID] = nameData.Name
 	}
 
   return result
 }
+
+// ------- CONSTELLATION INFO --------
 
 type ConstellationData struct {
 	Name			string
@@ -115,6 +171,8 @@ func getConstInfo(constID int) ConstellationData {
   return response
 }
 
+// ----------- SYSTEM INFO -----------
+
 type SystemData struct {
 	ID 						int
 	Name 					string
@@ -133,7 +191,7 @@ func getSystemInfo(systemID int) SystemData {
 	}
 
 	cacheData := systemCache[systemID]
-	err = cachedCall(req, &cacheData, results)
+	err = cachedCall(req, &cacheData, &results)
 	if err != nil {
 		log.Println("An error occurred getting system info", err)
 		return results
@@ -143,12 +201,26 @@ func getSystemInfo(systemID int) SystemData {
 	return results
 }
 
-func GetRouteLength(startSystem int, endSystem int) int {
-	var resultData []int
-	url := fmt.Sprintf("%s/route/%d/%d/", esiURL, startSystem, endSystem)
-	resp, _ := http.Get(url)
 
-	parseResults(resp, &resultData)
+// ----- ROUTE -----
+
+// TODO: Cache this endpoint
+type Route []int
+
+func GetRouteLength(startSystem int, endSystem int) int {
+	var resultData Route
+	url := fmt.Sprintf("%s/route/%d/%d/", esiURL, startSystem, endSystem)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Println("Failed HTTP request for route length", err)
+		return -1
+	}
+
+	err = parseResults(resp, &resultData)
+	if err != nil {
+		log.Println("Error occurred parsing results", err)
+		return -1
+	}
 
 	return len(resultData) - 2 // Subtract off the start and end systems
 }

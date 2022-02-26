@@ -22,7 +22,7 @@ func NewCommandMap() CommandMap {
 		helpMap: make(map[string]string),
 	}
 
-	newMap.AddCommand("!help", newMap.HelpText, "This help message")
+	newMap.AddCommand("help", newMap.HelpText, "This help message")
 
 	return newMap
 }
@@ -45,7 +45,7 @@ func (m *CommandMap) HelpText(msg xmpp.Chat) xmpp.Chat {
 	responseText := "Commands: \n"
 
 	for command, help := range m.helpMap {
-		responseText += fmt.Sprintf("%s  -  %s\n", command, help)
+		responseText += fmt.Sprintf("%c%s  -  %s\n", commandPrefix, command, help)
 	}
 
 	response.Text = responseText

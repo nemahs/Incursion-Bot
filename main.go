@@ -130,7 +130,8 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
       continue
     }
 
-    function, present := commandsMap.GetFunction(chatMsg.Text)
+    // Slice off the command prefix
+    function, present := commandsMap.GetFunction(chatMsg.Text[1:])
     if !present {
       log.Printf("Unknown or unsupported command: %s", chatMsg.Text)
       continue
@@ -153,8 +154,8 @@ func getUptime(msg xmpp.Chat) xmpp.Chat {
 
 func main() {
   commandsMap = NewCommandMap()
-  commandsMap.AddCommand("!incursions", listIncursions, "Lists the current incursions")
-  commandsMap.AddCommand("!uptime", getUptime, "Gets the current bot uptime")
+  commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
+  commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
 
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
