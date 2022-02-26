@@ -33,20 +33,6 @@ func cleanup(channel chan<- xmpp.Chat) {
   close(channel)
 }
 
-func listIncursions(c xmpp.Chat) xmpp.Chat {
-  responseText := "\n"
-
-  for _, incursion := range incursions {
-    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
-    incursion.ToString(),
-    incursion.Influence * 100, // Convert to % for easier reading
-    incursion.State,
-    incursion.Distance)
-  }
-
-  return createReply(c, responseText)
-}
-
 // Periodically polls ESI to get incursion data, and notifies chat of any changes
 func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   defer cleanup(msgChan)
@@ -127,6 +113,7 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
   }
 }
 
+// ------------- COMMANDS --------------------
 
 var startTime time.Time = time.Now()
 // Respond with the amount of time the bot's been up
@@ -137,14 +124,30 @@ func getUptime(msg xmpp.Chat) xmpp.Chat {
   return createReply(msg, msgText)
 }
 
-func printESIStatus(c xmpp.Chat) xmpp.Chat {
+func printESIStatus(msg xmpp.Chat) xmpp.Chat {
   log.Println("Checking ESI status...")
-  log.Println(c.Remote)
+  log.Println(msg.Remote)
   var status string
   if checkESI() { status = "GOOD" } else { status = "BAD" }
   msgText := fmt.Sprintf("Connection to ESI is %s", status)
-  return createReply(c, msgText)
+  return createReply(msg, msgText)
 }
+
+func listIncursions(msg xmpp.Chat) xmpp.Chat {
+  responseText := "\n"
+
+  for _, incursion := range incursions {
+    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
+    incursion.ToString(),
+    incursion.Influence * 100, // Convert to % for easier reading
+    incursion.State,
+    incursion.Distance)
+  }
+
+  return createReply(msg, responseText)
+}
+
+
 
 func main() {
   commandsMap = NewCommandMap()
@@ -159,7 +162,7 @@ func main() {
 
   // Connect XMPP client
   log.Println("Creating client...")
-  client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, true)
+  client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, false)
 
   if err != nil {
     log.Fatalln("Failed to init client", err)
