@@ -11,10 +11,8 @@ import (
 
 // TODO: Need to persist data so that in case the bot dies, it reconnects to the right MUCs
 // In addition, persistance can let the bot know how much time is left on a particular spawn
-// TODO: Fix all the MUC stuff to not use testMUC
 
 const maxRetries int = 10
-const testMUC string = "testbot"
 const jabberServer string = "conference.goonfleet.com"
 const homeSystem int = 30004759 // 1DQ1-A
 const botNick string = "IncursionBot"
@@ -22,7 +20,10 @@ const commandPrefix byte = '!'
 
 var commandsMap CommandMap
 var incursions IncursionList
+var jabberChannel *string
 
+// Recovers from any uncaught panics so that the main thread
+// can restart the routine.
 func cleanup(channel chan<- xmpp.Chat) {
   err := recover()
   if err != nil {
@@ -60,6 +61,7 @@ func newGroupMessage(muc string, text string) xmpp.Chat {
   }
 }
 
+// Periodically polls ESI to get incursion data, and notifies chat of any changes
 func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   defer cleanup(msgChan)
   var nextPollTime time.Time
@@ -75,41 +77,40 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       existingIncursion := incursions.find(incursionData.StagingID)
 
       if existingIncursion == nil {
+        // No existing incursion found, make a new one
         newIncursion := createNewIncursion(incursionData)
-
-        // Make new incursion
         newIncursionList = append(newIncursionList, newIncursion)
-        if !firstRun {
+
+        if !firstRun { // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
           msgText := fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
-          msgChan <- newGroupMessage(testMUC, msgText)
+          msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
       } else {
         // Update data and check if anything changed
         if updateIncursion(existingIncursion, incursionData) {
           msgText := fmt.Sprintf("%s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
-          msgChan <- newGroupMessage(testMUC, msgText)
+          msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
 
         newIncursionList = append(newIncursionList, *existingIncursion)
       }
     }
 
-    log.Printf("Comparing %+v to %+v", incursions, newIncursionList)
+    // Check if any incursions have despawned and report
     for _, existing := range incursions {
       if newIncursionList.find(existing.StagingID) == nil {
         msgText := fmt.Sprintf("Incursion in %s despawned", existing.ToString())
-        msgChan <- newGroupMessage(testMUC, msgText)
+        msgChan <- newGroupMessage(*jabberChannel, msgText)
       }
     }
 
     incursions = newIncursionList
-
     firstRun = false
     time.Sleep(time.Until(nextPollTime))
   }
 }
 
-
+// Polls jabber and processes any commands received
 func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
   defer cleanup(msgChan)
   
@@ -118,14 +119,11 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
 
     if err != nil {
       log.Println("Error encountered receiving message: ", err)
+      continue
     }
 
     chatMsg, ok := msg.(xmpp.Chat)
-
-    if !ok {
-      // Not a chat message, we don't care about it
-      continue
-    }
+    if !ok { continue } // Not a chat message, we don't care about it
     
     if len(chatMsg.Text) == 0 || chatMsg.Text[0] != commandPrefix {
       //Not a command, ignore
@@ -138,20 +136,21 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
       continue
     }
 
-    
     msgChan <- function(chatMsg)
   }
 }
 
+
+var startTime time.Time = time.Now()
+// Respond with the amount of time the bot's been up
 func getUptime(msg xmpp.Chat) xmpp.Chat {
   currentUptime := time.Since(startTime)
   msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
 
-  return newGroupMessage(testMUC, msgText)
+  return newGroupMessage(*jabberChannel, msgText)
 }
 
 
-var startTime time.Time = time.Now()
 func main() {
   commandsMap = NewCommandMap()
   commandsMap.AddCommand("!incursions", listIncursions, "Lists the current incursions")
@@ -159,8 +158,8 @@ func main() {
 
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
+  jabberChannel = flag.String("chat", "testbot", "MUC to join on start")
   flag.Parse()
-  checkESI()
 
   // Connect XMPP client
   log.Println("Creating client...")
@@ -170,7 +169,7 @@ func main() {
     log.Fatalln("Failed to init client", err)
   }
 
-  mucJID := fmt.Sprintf("%s@%s", testMUC, jabberServer)
+  mucJID := fmt.Sprintf("%s@%s", *jabberChannel, jabberServer)
   _, err = client.JoinMUCNoHistory(mucJID, botNick)
 
   if err != nil { log.Println("Failed to join MUC", err) }
