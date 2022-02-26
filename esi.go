@@ -14,10 +14,10 @@ import (
 const esiURL string = "https://esi.evetech.net/latest"
 
 type IncursionResponse struct {
-  Constellation_Id int
-  Infested_Solar_Systems []int
+  ConstellationID int `json:"constellation_id"`
+  IncursionSystems []int `json:"infested_solar_systems"`
   Influence float64
-  Staging_Solar_System_Id int
+  StagingID int `json:"staging_solar_system_id"`
   State string
 }
 
@@ -80,7 +80,7 @@ func getNames(ids []int) map[int]string {
 
 type ConstellationData struct {
     Name string
-    Region_Id int
+    RegionID int `json:"region_id"`
   }
 
 func getConstInfo(constID int) ConstellationData {
@@ -122,7 +122,7 @@ func GetRouteLength(startSystem int, endSystem int) int {
 
 	parseResults(resp, &resultData)
 
-	return len(resultData)
+	return len(resultData) - 2 // Subtract off the start and end systems
 }
 
 type SecurityClass string
@@ -141,4 +141,19 @@ func guessSecClass(status float64) SecurityClass {
 	}
 
 	return NullSec
+}
+
+func checkESI() {
+	// TODO: Mess with this so it uses swagger to verify the integrety of each endpoint
+	url := "https://esi.evetech.net/latest/swagger.json"
+	resp, _ := http.Get(url)
+
+	parsedData, _ := ioutil.ReadAll(resp.Body)
+	var result map[string]interface{}
+
+	json.Unmarshal(parsedData, &result)
+
+	for key, _ := range result["paths"].(map[string]interface{}) {
+		log.Println(key)
+	}
 }

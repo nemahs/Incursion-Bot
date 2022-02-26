@@ -11,25 +11,17 @@ import (
 
 // TODO: Need to persist data so that in case the bot dies, it reconnects to the right MUCs
 // In addition, persistance can let the bot know how much time is left on a particular spawn
+// TODO: Fix all the MUC stuff to not use testMUC
 
 const maxRetries int = 10
 const testMUC string = "testbot"
 const jabberServer string = "conference.goonfleet.com"
-const homeSystem int = 30004759
-
-
-type Incursion struct {
-  Constellation string
-  HQSystem string
-  Influence float64
-  Region string
-  State string
-  Security string
-  SecStatus float64
-  Distance int
-}
+const homeSystem int = 30004759 // 1DQ1-A
+const botNick string = "IncursionBot"
+const commandPrefix byte = '!'
 
 var commandsMap CommandMap
+var incursions IncursionList
 
 func cleanup(channel chan<- xmpp.Chat) {
   err := recover()
@@ -40,7 +32,6 @@ func cleanup(channel chan<- xmpp.Chat) {
   close(channel)
 }
 
-
 func listIncursions(c xmpp.Chat) xmpp.Chat {
   response := xmpp.Chat {
     Remote: parseMuc(c.Remote, jabberServer),
@@ -49,11 +40,8 @@ func listIncursions(c xmpp.Chat) xmpp.Chat {
   responseText := "\n"
 
   for _, incursion := range incursions {
-    responseText += fmt.Sprintf("%s {%.2f} (%s - %s) - Influence: %.2f%% - Status: %s - %d jumps \n",
-    incursion.HQSystem, // TODO: Actually make this the HQ system and not the staging
-    incursion.SecStatus,
-    incursion.Constellation,
-    incursion.Region,
+    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
+    incursion.ToString(),
     incursion.Influence * 100, // Convert to % for easier reading
     incursion.State,
     incursion.Distance)
@@ -64,49 +52,63 @@ func listIncursions(c xmpp.Chat) xmpp.Chat {
   return response
 }
 
+func newGroupMessage(muc string, text string) xmpp.Chat {
+  return xmpp.Chat{
+    Remote: fmt.Sprintf("%s@%s", muc, jabberServer),
+    Type: "groupchat",
+    Text: text,
+  }
+}
 
-var incursions []Incursion
-
-func pollIncursionsData(msg chan<- xmpp.Chat) {
-  defer cleanup(msg)
+func pollIncursionsData(msgChan chan<- xmpp.Chat) {
+  defer cleanup(msgChan)
   var nextPollTime time.Time
+  firstRun := true
   
   for {
-    incursionData, nextPollTime = getIncursions()
-    incursions = nil
+    var newIncursionList IncursionList
+    var incursionResponses []IncursionResponse
+
+    incursionResponses, nextPollTime = getIncursions()
     
-    for _, incursion := range incursionData {
-      stagingData := getSystemInfo(incursion.Staging_Solar_System_Id)
+    for _, incursionData := range incursionResponses {
+      existingIncursion := incursions.find(incursionData.StagingID)
 
+      if existingIncursion == nil {
+        newIncursion := createNewIncursion(incursionData)
 
-      if stagingData.Security_Class == HighSec {
-        continue // No one cares about high sec
+        // Make new incursion
+        newIncursionList = append(newIncursionList, newIncursion)
+        if !firstRun {
+          msgText := fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
+          msgChan <- newGroupMessage(testMUC, msgText)
+        }
+      } else {
+        // Update data and check if anything changed
+        if updateIncursion(existingIncursion, incursionData) {
+          msgText := fmt.Sprintf("%s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
+          msgChan <- newGroupMessage(testMUC, msgText)
+        }
+
+        newIncursionList = append(newIncursionList, *existingIncursion)
       }
-
-      constData := getConstInfo(incursion.Constellation_Id)
-      names := getNames([]int{constData.Region_Id, incursion.Staging_Solar_System_Id})
-      distance := GetRouteLength(homeSystem, incursion.Staging_Solar_System_Id)
-
-      newIncursion := Incursion{
-        Constellation: constData.Name,
-        HQSystem: names[incursion.Staging_Solar_System_Id],
-        Influence: incursion.Influence,
-        Region: names[constData.Region_Id],
-        State: incursion.State,
-        SecStatus: stagingData.Security_Status,
-        Security: string(stagingData.Security_Class),
-        Distance: distance,
-      }
-
-      log.Printf("Incursion: %+v", newIncursion)
-      incursions = append(incursions, newIncursion)
     }
-    
-    // TODO: Do some diff checking to see if we need to publish a new message
-    
+
+    log.Printf("Comparing %+v to %+v", incursions, newIncursionList)
+    for _, existing := range incursions {
+      if newIncursionList.find(existing.StagingID) == nil {
+        msgText := fmt.Sprintf("Incursion in %s despawned", existing.ToString())
+        msgChan <- newGroupMessage(testMUC, msgText)
+      }
+    }
+
+    incursions = newIncursionList
+
+    firstRun = false
     time.Sleep(time.Until(nextPollTime))
   }
 }
+
 
 func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
   defer cleanup(msgChan)
@@ -125,7 +127,7 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
       continue
     }
     
-    if len(chatMsg.Text) == 0 || chatMsg.Text[0] != '!' {
+    if len(chatMsg.Text) == 0 || chatMsg.Text[0] != commandPrefix {
       //Not a command, ignore
       continue
     }
@@ -141,13 +143,24 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
   }
 }
 
+func getUptime(msg xmpp.Chat) xmpp.Chat {
+  currentUptime := time.Since(startTime)
+  msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
+
+  return newGroupMessage(testMUC, msgText)
+}
+
+
+var startTime time.Time = time.Now()
 func main() {
   commandsMap = NewCommandMap()
   commandsMap.AddCommand("!incursions", listIncursions, "Lists the current incursions")
+  commandsMap.AddCommand("!uptime", getUptime, "Gets the current bot uptime")
 
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
   flag.Parse()
+  checkESI()
 
   // Connect XMPP client
   log.Println("Creating client...")
@@ -158,9 +171,9 @@ func main() {
   }
 
   mucJID := fmt.Sprintf("%s@%s", testMUC, jabberServer)
-  _, err = client.JoinMUCNoHistory(mucJID, "IncursionsBot")
-  
-  log.Println("Results from JoinMUC:", err)
+  _, err = client.JoinMUCNoHistory(mucJID, botNick)
+
+  if err != nil { log.Println("Failed to join MUC", err) }
 
   // Spawn ESI and receive routines
   log.Println("Client created, starting routines...")
@@ -199,4 +212,6 @@ func main() {
       }
     }
   }
+
+  log.Fatalln("Max retries reached, shutting down...")
 }
