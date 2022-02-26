@@ -46,14 +46,20 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     incursionResponses, nextPollTime = getIncursions()
     
     for _, incursionData := range incursionResponses {
-      existingIncursion := incursions.find(incursionData.StagingID)
+      stagingInfo := getSystemInfo(incursionData.StagingID)
 
+      if stagingInfo.SecurityClass == HighSec {
+        continue // We do not give a fuck about highsec
+      }
+
+      existingIncursion := incursions.find(incursionData.StagingID)
       if existingIncursion == nil {
         // No existing incursion found, make a new one
         newIncursion := createNewIncursion(incursionData)
         newIncursionList = append(newIncursionList, newIncursion)
 
-        if !firstRun { // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
+        // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
+        if !firstRun { 
           msgText := fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
@@ -162,6 +168,8 @@ func main() {
 
   // Connect XMPP client
   log.Println("Creating client...")
+  // goonfleet dot com promotes a connection to TLS later, the connection needs to start unencrypted
+  // If the client attempts to initiate TLS, things break
   client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, false)
 
   if err != nil {
