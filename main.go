@@ -34,10 +34,6 @@ func cleanup(channel chan<- xmpp.Chat) {
 }
 
 func listIncursions(c xmpp.Chat) xmpp.Chat {
-  response := xmpp.Chat {
-    Remote: parseMuc(c.Remote, jabberServer),
-    Type: c.Type,
-  }
   responseText := "\n"
 
   for _, incursion := range incursions {
@@ -48,17 +44,7 @@ func listIncursions(c xmpp.Chat) xmpp.Chat {
     incursion.Distance)
   }
 
-  response.Text = responseText
-
-  return response
-}
-
-func newGroupMessage(muc string, text string) xmpp.Chat {
-  return xmpp.Chat{
-    Remote: fmt.Sprintf("%s@%s", muc, jabberServer),
-    Type: "groupchat",
-    Text: text,
-  }
+  return createReply(c, responseText)
 }
 
 // Periodically polls ESI to get incursion data, and notifies chat of any changes
@@ -148,14 +134,23 @@ func getUptime(msg xmpp.Chat) xmpp.Chat {
   currentUptime := time.Since(startTime)
   msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
 
-  return newGroupMessage(*jabberChannel, msgText)
+  return createReply(msg, msgText)
 }
 
+func printESIStatus(c xmpp.Chat) xmpp.Chat {
+  log.Println("Checking ESI status...")
+  log.Println(c.Remote)
+  var status string
+  if checkESI() { status = "GOOD" } else { status = "BAD" }
+  msgText := fmt.Sprintf("Connection to ESI is %s", status)
+  return createReply(c, msgText)
+}
 
 func main() {
   commandsMap = NewCommandMap()
   commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
   commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
+  commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
 
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
@@ -164,7 +159,7 @@ func main() {
 
   // Connect XMPP client
   log.Println("Creating client...")
-  client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, false)
+  client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, true)
 
   if err != nil {
     log.Fatalln("Failed to init client", err)

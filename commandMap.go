@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/mattn/go-xmpp"
 )
@@ -25,14 +24,6 @@ func NewCommandMap() CommandMap {
 	newMap.AddCommand("help", newMap.HelpText, "This help message")
 
 	return newMap
-}
-
-// Parse the JID to extract the MUC it came from
-func parseMuc(jid string, server string) string {
-	mucReg, _ := regexp.Compile(".*@" + server)
-	muc := string(mucReg.Find([]byte(jid)))
-
-	return muc
 }
 
 // Default command to send all the supported commands in the map

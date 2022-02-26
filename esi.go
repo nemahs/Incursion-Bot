@@ -242,17 +242,10 @@ func guessSecClass(status float64) SecurityClass {
 	return NullSec
 }
 
-func checkESI() {
+func checkESI() bool {
 	// TODO: Mess with this so it uses swagger to verify the integrety of each endpoint
 	url := "https://esi.evetech.net/latest/swagger.json"
 	resp, _ := http.Get(url)
 
-	parsedData, _ := ioutil.ReadAll(resp.Body)
-	var result map[string]interface{}
-
-	json.Unmarshal(parsedData, &result)
-
-	for key, _ := range result["paths"].(map[string]interface{}) {
-		log.Println(key)
-	}
+	return resp.StatusCode == http.StatusOK
 }
