@@ -27,7 +27,7 @@ var jabberChannel *string
 func cleanup(channel chan<- xmpp.Chat) {
   err := recover()
   if err != nil {
-    log.Println("Recovered from unexpected error: ", err)
+    Warning.Println("Recovered from unexpected error: ", err)
   }
   
   close(channel)
@@ -57,16 +57,20 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
         // No existing incursion found, make a new one
         newIncursion := createNewIncursion(incursionData)
         newIncursionList = append(newIncursionList, newIncursion)
+        Info.Printf("Found new incursion in %s", newIncursion.ToString())
 
         // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
-        if !firstRun { 
+        if !firstRun {
           msgText := fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
+          Info.Printf("Sending new incursion notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
       } else {
         // Update data and check if anything changed
+        Info.Printf("Found existing incursion in %s to update", existingIncursion.ToString())
         if updateIncursion(existingIncursion, incursionData) {
           msgText := fmt.Sprintf("%s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
+          Info.Printf("Sending state change notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
 
@@ -78,6 +82,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     for _, existing := range incursions {
       if newIncursionList.find(existing.StagingID) == nil {
         msgText := fmt.Sprintf("Incursion in %s despawned", existing.ToString())
+        Info.Printf("Sending despawn notification to %s for %s", *jabberChannel, existing.ToString())
         msgChan <- newGroupMessage(*jabberChannel, msgText)
       }
     }
@@ -96,7 +101,7 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
     msg, err := jabber.Recv()
 
     if err != nil {
-      log.Println("Error encountered receiving message: ", err)
+      Error.Println("Error encountered receiving message: ", err)
       continue
     }
 
@@ -111,7 +116,7 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
     // Slice off the command prefix
     function, present := commandsMap.GetFunction(chatMsg.Text[1:])
     if !present {
-      log.Printf("Unknown or unsupported command: %s", chatMsg.Text)
+      Warning.Printf("Unknown or unsupported command: %s", chatMsg.Text)
       continue
     }
 
@@ -127,6 +132,7 @@ func getUptime(msg xmpp.Chat) xmpp.Chat {
   currentUptime := time.Since(startTime)
   msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
 
+  Info.Printf("Sending uptime in response to a message from %s", msg.Remote)
   return createReply(msg, msgText)
 }
 
@@ -134,6 +140,7 @@ func printESIStatus(msg xmpp.Chat) xmpp.Chat {
   var status string
   if checkESI() { status = "GOOD" } else { status = "BAD" }
   msgText := fmt.Sprintf("Connection to ESI is %s", status)
+  Info.Printf("Sending ESI status in response to a message from %s", msg.Remote)
   return createReply(msg, msgText)
 }
 
@@ -148,6 +155,7 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
     incursion.Distance)
   }
 
+  Info.Printf("Sending current incursions in response to a message from %s", msg.Remote)
   return createReply(msg, responseText)
 }
 
@@ -165,22 +173,23 @@ func main() {
   flag.Parse()
 
   // Connect XMPP client
-  log.Println("Creating client...")
+  Info.Println("Creating client...")
   // goonfleet dot com promotes a connection to TLS later, the connection needs to start unencrypted
   // If the client attempts to initiate TLS, things break
   client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, false)
 
   if err != nil {
-    log.Fatalln("Failed to init client", err)
+    Error.Fatalln("Failed to init client", err)
   }
 
   mucJID := fmt.Sprintf("%s@%s", *jabberChannel, jabberServer)
+  Info.Printf("Joining %s", mucJID)
   _, err = client.JoinMUCNoHistory(mucJID, botNick)
 
-  if err != nil { log.Println("Failed to join MUC", err) }
+  if err != nil { Error.Println("Failed to join MUC", err) }
 
   // Spawn ESI and receive routines
-  log.Println("Client created, starting routines...")
+  Info.Println("Client created, starting routines...")
   esiChan := make(chan xmpp.Chat)
   jabberChan := make(chan xmpp.Chat)
   go pollIncursionsData(esiChan)
@@ -192,7 +201,7 @@ func main() {
       case msg, ok := <-esiChan: {
         if !ok {
           esiChan = make(chan xmpp.Chat)
-          log.Println("Restarting incursions routine after crash")
+          Warning.Println("Restarting incursions routine after crash")
           currentRetries--
           go pollIncursionsData(esiChan)
         } else {
@@ -205,7 +214,7 @@ func main() {
       case msg, ok := <-jabberChan: {
         if !ok {
           jabberChan = make(chan xmpp.Chat)
-          log.Println("Restarting jabber routine after crash")
+          Warning.Println("Restarting jabber routine after crash")
           currentRetries--
           go pollChat(jabberChan, client)
         } else {
@@ -217,5 +226,5 @@ func main() {
     }
   }
 
-  log.Fatalln("Max retries reached, shutting down...")
+  Error.Fatalln("Max retries reached, shutting down...")
 }

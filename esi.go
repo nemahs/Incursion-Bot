@@ -54,7 +54,7 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
 		return nil
 	default: 
 		data, _ := ioutil.ReadAll(resp.Request.Body)
-		return fmt.Errorf("error %d received from server: %s", resp.StatusCode, string(data))
+		return fmt.Errorf("status code %d received from server: %s", resp.StatusCode, string(data))
 	}
 
 	err = parseResults(resp, resultStruct)
@@ -79,13 +79,13 @@ func getIncursions() ([]IncursionResponse, time.Time) {
 	var result []IncursionResponse
   req, err := http.NewRequest("GET", esiURL + "/incursions/", nil)
 	if err != nil {
-		log.Println("Failed to create request for incursions", err)
+		Error.Println("Failed to create request for incursions", err)
 		return result, incursionsCache.ExpirationTime
 	}
 	err = cachedCall(req, &incursionsCache, &result)
   
 	if err != nil {
-		log.Println("Error occured while getting incursions", err)
+		Error.Println("Error occured while getting incursions", err)
 	}
 
   return result, incursionsCache.ExpirationTime
@@ -120,25 +120,25 @@ func getNames(ids []int) NameMap {
 	// Find the remaining names
 	data, err := json.Marshal(unknownIDs)
 	if err != nil {
-		log.Println("Failed to marshal IDs into json", err)
+		Error.Println("Failed to marshal IDs into json", err)
 		return result
 	}
 
   req, err := http.NewRequest("POST", esiURL + "/universe/names/", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println("Failed to create name request", req)
+		Error.Println("Failed to create name request", req)
 		return result
 	}
 
   resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("Failed HTTP request for names", err)
+		Error.Println("Failed HTTP request for names", err)
 		return result
 	}
 
 	err = parseResults(resp, &responseData)
 	if err != nil {
-		log.Println("Failed to parse name results", err)
+		Error.Println("Failed to parse name results", err)
 		return result
 	}
 
@@ -169,7 +169,7 @@ func getConstInfo(constID int) ConstellationData {
 	err := cachedCall(req, &cacheData, &response)
 
 	if err != nil {
-		log.Println("Error occurred in getting the constellation data", err)
+		Error.Println("Error occurred in getting the constellation data", err)
 	}
   return response
 }
@@ -189,14 +189,14 @@ func getSystemInfo(systemID int) SystemData {
 	url := fmt.Sprintf("%s/universe/systems/%d/", esiURL, systemID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Println("An error occurred creating the system info request", err)
+		Error.Println("An error occurred creating the system info request", err)
 		return results
 	}
 
 	cacheData := systemCache[systemID]
 	err = cachedCall(req, &cacheData, &results)
 	if err != nil {
-		log.Println("An error occurred getting system info", err)
+		Error.Println("An error occurred getting system info", err)
 		return results
 	}
 	results.SecurityClass = guessSecClass(results.SecStatus)
@@ -215,13 +215,13 @@ func GetRouteLength(startSystem int, endSystem int) int {
 	url := fmt.Sprintf("%s/route/%d/%d/", esiURL, startSystem, endSystem)
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Failed HTTP request for route length", err)
+		Error.Println("Failed HTTP request for route length", err)
 		return -1
 	}
 
 	err = parseResults(resp, &resultData)
 	if err != nil {
-		log.Println("Error occurred parsing results", err)
+		Error.Println("Error occurred parsing results", err)
 		return -1
 	}
 
