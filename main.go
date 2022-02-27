@@ -197,9 +197,9 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
 
 
 func init() {
-	Info = log.New(os.Stdout, "INFO: ", log.LstdFlags|log.Lshortfile)
-	Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile)
-	Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile)
+	Info = log.New(os.Stdout, "INFO: ", log.LstdFlags|log.Lshortfile|log.LUTC)
+	Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile|log.LUTC)
+	Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile|log.LUTC)
 }
 
 func main() {
@@ -242,8 +242,8 @@ func main() {
       case msg, ok := <-esiChan: {
         if !ok {
           esiChan = make(chan xmpp.Chat)
-          Warning.Println("Restarting incursions routine after crash")
           currentRetries--
+          Warning.Printf("Restarting incursions routine after crash, %d tries remaining", currentRetries)
           go pollIncursionsData(esiChan)
         } else {
           _, err := client.Send(msg)
@@ -255,8 +255,8 @@ func main() {
       case msg, ok := <-jabberChan: {
         if !ok {
           jabberChan = make(chan xmpp.Chat)
-          Warning.Println("Restarting jabber routine after crash")
           currentRetries--
+          Warning.Printf("Restarting jabber routine after crash, %d tries remaining", currentRetries)
           go pollChat(jabberChan, client)
         } else {
           _, err := client.Send(msg)
