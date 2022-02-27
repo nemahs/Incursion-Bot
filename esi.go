@@ -27,7 +27,7 @@ func parseResults(resp *http.Response, resultStruct interface{}) error {
 
 func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
 	if !cache.Expired() {
-		resultStruct = cache.Data
+		resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
 		return nil
 	}
 
@@ -40,7 +40,8 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
 
 	switch resp.StatusCode {
 	case http.StatusNotModified: {
-		resultStruct = cache.Data
+		resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
+
 		return nil
 	}
   case http.StatusOK: break // Expected case
@@ -48,7 +49,8 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
 		fallthrough
 	case http.StatusInternalServerError:
 		log.Println("ESI is having problems, returning cached data instead")
-		resultStruct = cache.Data
+		resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
+
 		return nil
 	default: 
 		data, _ := ioutil.ReadAll(resp.Request.Body)
@@ -96,11 +98,12 @@ type NameResponse struct {
   ID				int
   Name			string
 }
+type NameMap map[int]string // Map of item IDs to names
 
-var cachedNames map[int]string = make(map[int]string)
-func getNames(ids []int) map[int]string {
+var cachedNames NameMap = make(NameMap)
+func getNames(ids []int) NameMap {
   var responseData []NameResponse
-	result := make(map[int]string)
+	result := make(NameMap)
 
 	// Filter out names that we already know
 	var unknownIDs []int

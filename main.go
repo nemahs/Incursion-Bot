@@ -131,8 +131,6 @@ func getUptime(msg xmpp.Chat) xmpp.Chat {
 }
 
 func printESIStatus(msg xmpp.Chat) xmpp.Chat {
-  log.Println("Checking ESI status...")
-  log.Println(msg.Remote)
   var status string
   if checkESI() { status = "GOOD" } else { status = "BAD" }
   msgText := fmt.Sprintf("Connection to ESI is %s", status)
