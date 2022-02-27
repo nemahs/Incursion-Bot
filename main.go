@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/mattn/go-xmpp"
@@ -19,14 +20,15 @@ var (
 )
 
 const maxRetries int = 10
-const jabberServer string = "conference.goonfleet.com"
-const homeSystem int = 30004759 // 1DQ1-A
-const botNick string = "IncursionBot"
-const commandPrefix byte = '!'
+const jabberServer string = "conference.goonfleet.com"  // Jabber server to connect to
+const homeSystem int = 30004759                         // 1DQ1-A
+const botNick string = "IncursionBot"                   // Bot will connect to jabber using this nickname
+const commandPrefix byte = '!'                          // All commands must start with this prefix
 
-var commandsMap CommandMap
-var incursions IncursionList
-var jabberChannel *string
+var commandsMap CommandMap     // Map if all supported commands, their functions, and their help messages
+var incursions IncursionList   // List of currently tracked incursions
+var incursionsMutex sync.Mutex // Synchronize access to the incursionsList
+var jabberChannel *string      // Jabber channel to broadcast to
 
 // Recovers from any uncaught panics so that the main thread
 // can restart the routine.
@@ -97,7 +99,10 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       }
     }
 
+    incursionsMutex.Lock()
     incursions = newIncursionList
+    incursionsMutex.Unlock()
+    
     firstRun = false
     time.Sleep(time.Until(nextPollTime))
   }
@@ -157,6 +162,7 @@ func printESIStatus(msg xmpp.Chat) xmpp.Chat {
 func listIncursions(msg xmpp.Chat) xmpp.Chat {
   responseText := "\n"
 
+  incursionsMutex.Lock()
   for _, incursion := range incursions {
     responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
     incursion.ToString(),
@@ -165,6 +171,7 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
     incursion.Distance)
   }
 
+  incursionsMutex.Unlock()
   Info.Printf("Sending current incursions in response to a message from %s", msg.Remote)
   return createReply(msg, responseText)
 }
