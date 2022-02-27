@@ -4,13 +4,19 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/mattn/go-xmpp"
 )
 
-// TODO: Need to persist data so that in case the bot dies, it reconnects to the right MUCs
-// In addition, persistance can let the bot know how much time is left on a particular spawn
+// TODO: Estimate time left in spawn
+
+var (
+	Info *log.Logger
+	Warning *log.Logger
+	Error *log.Logger
+)
 
 const maxRetries int = 10
 const jabberServer string = "conference.goonfleet.com"
@@ -160,6 +166,11 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
 }
 
 
+func init() {
+	Info = log.New(os.Stdout, "INFO: ", log.LstdFlags|log.Lshortfile)
+	Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile)
+	Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile)
+}
 
 func main() {
   commandsMap = NewCommandMap()
