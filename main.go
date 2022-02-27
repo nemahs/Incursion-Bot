@@ -42,14 +42,18 @@ func cleanup(channel chan<- xmpp.Chat) {
 // Periodically polls ESI to get incursion data, and notifies chat of any changes
 func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   defer cleanup(msgChan)
-  var nextPollTime time.Time
   firstRun := true
   
   for {
-    var newIncursionList IncursionList
-    var incursionResponses []IncursionResponse
+    var newIncursionList IncursionList // List of incursions we've seen in this loop
 
-    incursionResponses, nextPollTime = getIncursions()
+    incursionResponses, nextPollTime, err := getIncursions()
+
+    if err != nil {
+      Warning.Println("Error occurred getting incursions, sleeping 1 min then reattempting", err)
+      time.Sleep(time.Minute)
+      continue
+    }
     
     for _, incursionData := range incursionResponses {
       stagingInfo := getSystemInfo(incursionData.StagingID)

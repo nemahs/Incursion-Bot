@@ -75,20 +75,21 @@ type IncursionResponse struct {
 }
 
 var incursionsCache CacheEntry
-func getIncursions() ([]IncursionResponse, time.Time) {
+func getIncursions() ([]IncursionResponse, time.Time, error) {
 	var result []IncursionResponse
   req, err := http.NewRequest("GET", esiURL + "/incursions/", nil)
 	if err != nil {
 		Error.Println("Failed to create request for incursions", err)
-		return result, incursionsCache.ExpirationTime
+		return result, incursionsCache.ExpirationTime, err
 	}
 	err = cachedCall(req, &incursionsCache, &result)
   
 	if err != nil {
 		Error.Println("Error occured while getting incursions", err)
+		return result, incursionsCache.ExpirationTime, nil
 	}
 
-  return result, incursionsCache.ExpirationTime
+  return result, incursionsCache.ExpirationTime, nil
 }
 
 // --------- NAME RESOLUTION ---------
@@ -117,6 +118,11 @@ func getNames(ids []int) NameMap {
 		}
 	}
 
+	if len(unknownIDs) == 0 {
+		// We already know all the IDs, no need to bother ESI
+		return result
+	}
+
 	// Find the remaining names
 	data, err := json.Marshal(unknownIDs)
 	if err != nil {
@@ -133,6 +139,12 @@ func getNames(ids []int) NameMap {
   resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		Error.Println("Failed HTTP request for names", err)
+		return result
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		Error.Printf("Name endpoint returned a status code of %d: %s", resp.StatusCode, string(body))
 		return result
 	}
 
@@ -163,14 +175,18 @@ var constDataCache CacheMap = make(CacheMap)
 func getConstInfo(constID int) ConstellationData {
   var response ConstellationData
   url := fmt.Sprintf("%s/universe/constellations/%d/", esiURL, constID)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		Error.Printf("Failed to create constellation info request for id: %d", constID)
+		return response
+	}
 
 	cacheData := constDataCache[constID]
-	err := cachedCall(req, &cacheData, &response)
-
+	err = cachedCall(req, &cacheData, &response)
 	if err != nil {
 		Error.Println("Error occurred in getting the constellation data", err)
 	}
+
   return response
 }
 
@@ -248,7 +264,12 @@ func guessSecClass(status float64) SecurityClass {
 func checkESI() bool {
 	// TODO: Mess with this so it uses swagger to verify the integrety of each endpoint
 	url := "https://esi.evetech.net/latest/swagger.json"
-	resp, _ := http.Get(url)
+	resp, err := http.Get(url)
+
+	if err != nil {
+		Error.Println("Error occurred querying ESI:", err)
+		return false
+	}
 
 	return resp.StatusCode == http.StatusOK
 }
