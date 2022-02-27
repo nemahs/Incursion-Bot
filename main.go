@@ -30,6 +30,20 @@ var incursions IncursionList   // List of currently tracked incursions
 var incursionsMutex sync.Mutex // Synchronize access to the incursionsList
 var jabberChannel *string      // Jabber channel to broadcast to
 
+
+// Returns goon home regions (currently Delve, Querious, and Period Basis)
+func getHomeRegions() []int {
+  return []int{10000060, 10000050, 10000063}
+}
+
+func contains(slice []int, val int) bool {
+  for _, v := range slice {
+    if v == val { return true }
+  }
+
+  return false
+}
+
 // Recovers from any uncaught panics so that the main thread
 // can restart the routine.
 func cleanup(channel chan<- xmpp.Chat) {
@@ -73,7 +87,12 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
 
         // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
         if !firstRun {
-          msgText := fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
+          var msgText string
+          if contains(getHomeRegions(), newIncursion.Region.ID) {
+            msgText = fmt.Sprintf(":siren: New incursion detected in a home region! %s -%d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
+          } else {
+            msgText = fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
+          }
           Info.Printf("Sending new incursion notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
