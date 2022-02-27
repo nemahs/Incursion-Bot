@@ -13,13 +13,16 @@ const (
 	Withdrawing	IncursionState = "Withdrawing"
 )
 
+type NamedItem struct {
+	Name string
+	ID int
+}
 
 type Incursion struct {
-	StagingID     int							// ID of the staging system in this incursion. Used to uniquely identify incursions
-	Constellation string					// Constellation the incursion is in
-	HQSystem      string					// Name of the HQ system
+	Constellation NamedItem				// Constellation the incursion is in
+	StagingSystem NamedItem				// Name of the HQ system
 	Influence     float64					// Influence of the incursion from 0 to 1 inclusive
-	Region        string					// Region the incursion is in
+	Region        NamedItem				// Region the incursion is in
 	State         IncursionState	// Current state of the incursion
 	Security      SecurityClass		// Security type of the staging system
 	SecStatus     float64					// Security status of the staging system, -1 to 1 inclusive
@@ -27,19 +30,19 @@ type Incursion struct {
 }
 
 func (inc *Incursion) ToString() string {
-	return fmt.Sprintf("%s {%.2f} (%s - %s)", inc.HQSystem, inc.SecStatus, inc.Constellation, inc.Region)
+	return fmt.Sprintf("%s {%.2f} (%s - %s)", inc.StagingSystem.Name, inc.SecStatus, inc.Constellation.Name, inc.Region.Name)
 }
 
 type IncursionList []Incursion
 func (list *IncursionList) find(stagingId int) *Incursion {
   for _, incursion := range *list {
-    if incursion.StagingID == stagingId { return &incursion }
+    if incursion.StagingSystem.ID == stagingId { return &incursion }
   }
   return nil
 }
 
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
-func updateIncursion(incursion *Incursion, newData IncursionResponse) bool {
+func UpdateIncursion(incursion *Incursion, newData IncursionResponse) bool {
   updated := false
 
   if incursion.State != newData.State {
@@ -52,18 +55,17 @@ func updateIncursion(incursion *Incursion, newData IncursionResponse) bool {
 }
 
 // Creates a new Incursion object from ESI data
-func createNewIncursion(incursion IncursionResponse) Incursion {
+func CreateNewIncursion(incursion IncursionResponse) Incursion {
   stagingData := getSystemInfo(incursion.StagingID)
   constData := getConstInfo(incursion.ConstellationID)
-  names := getNames([]int{constData.RegionID, incursion.StagingID})
+  names := getNames([]int{constData.RegionID})	
   distance := GetRouteLength(homeSystem, incursion.StagingID)
 
   newIncursion := Incursion{
-    StagingID: incursion.StagingID,
-    Constellation: constData.Name,
-    HQSystem: names[incursion.StagingID],
+    Constellation: NamedItem{ID: constData.ID, Name: constData.Name},
+    StagingSystem: NamedItem{ID: stagingData.ID, Name: stagingData.Name},
     Influence: incursion.Influence,
-    Region: names[constData.RegionID],
+    Region: NamedItem{ID: constData.RegionID, Name: names[constData.RegionID]},
     State: incursion.State,
     SecStatus: stagingData.SecStatus,
     Security: stagingData.SecurityClass,

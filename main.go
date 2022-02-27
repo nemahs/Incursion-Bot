@@ -65,7 +65,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       existingIncursion := incursions.find(incursionData.StagingID)
       if existingIncursion == nil {
         // No existing incursion found, make a new one
-        newIncursion := createNewIncursion(incursionData)
+        newIncursion := CreateNewIncursion(incursionData)
         newIncursionList = append(newIncursionList, newIncursion)
         Info.Printf("Found new incursion in %s", newIncursion.ToString())
 
@@ -78,8 +78,8 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       } else {
         // Update data and check if anything changed
         Info.Printf("Found existing incursion in %s to update", existingIncursion.ToString())
-        if updateIncursion(existingIncursion, incursionData) {
-          msgText := fmt.Sprintf("%s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
+        if UpdateIncursion(existingIncursion, incursionData) {
+          msgText := fmt.Sprintf("Incursion in %s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
           Info.Printf("Sending state change notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
@@ -90,7 +90,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
 
     // Check if any incursions have despawned and report
     for _, existing := range incursions {
-      if newIncursionList.find(existing.StagingID) == nil {
+      if newIncursionList.find(existing.StagingSystem.ID) == nil {
         msgText := fmt.Sprintf("Incursion in %s despawned", existing.ToString())
         Info.Printf("Sending despawn notification to %s for %s", *jabberChannel, existing.ToString())
         msgChan <- newGroupMessage(*jabberChannel, msgText)
