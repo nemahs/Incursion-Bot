@@ -167,6 +167,7 @@ func getNames(ids []int) NameMap {
 // ------- CONSTELLATION INFO --------
 
 type ConstellationData struct {
+	ID 				int `json:"constellation_id"`
 	Name			string
 	RegionID	int `json:"region_id"`
 }
@@ -193,7 +194,7 @@ func getConstInfo(constID int) ConstellationData {
 // ----------- SYSTEM INFO -----------
 
 type SystemData struct {
-	ID 						int
+	ID 						int `json:"system_id"`
 	Name 					string
 	SecStatus 		float64 `json:"security_status"`
 	SecurityClass SecurityClass
