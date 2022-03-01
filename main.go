@@ -1,22 +1,22 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"log"
-	"os"
-	"sync"
-	"time"
+  "flag"
+  "fmt"
+  "log"
+  "os"
+  "sync"
+  "time"
 
-	"github.com/mattn/go-xmpp"
+  "github.com/mattn/go-xmpp"
 )
 
 // TODO: Estimate time left in spawn
 
 var (
-	Info *log.Logger
-	Warning *log.Logger
-	Error *log.Logger
+  Info *log.Logger
+  Warning *log.Logger
+  Error *log.Logger
 )
 
 const maxRetries int = 10
@@ -197,9 +197,9 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
 
 
 func init() {
-	Info = log.New(os.Stdout, "INFO: ", log.LstdFlags|log.Lshortfile|log.LUTC)
-	Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile|log.LUTC)
-	Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile|log.LUTC)
+  Info = log.New(os.Stdout, "INFO: ", log.LstdFlags|log.Lshortfile|log.LUTC)
+  Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile|log.LUTC)
+  Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile|log.LUTC)
 }
 
 func main() {
