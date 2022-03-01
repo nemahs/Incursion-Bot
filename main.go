@@ -197,22 +197,25 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
 
 
 func init() {
+  // Create loggers
   Info = log.New(os.Stdout, "INFO: ", log.LstdFlags|log.Lshortfile|log.LUTC)
   Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile|log.LUTC)
   Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile|log.LUTC)
-}
-
-func main() {
+  
+  // Add commands to the command map
   commandsMap = NewCommandMap()
   commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
   commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
   commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
-
+  
+  // Parse command line flags
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
   jabberChannel = flag.String("chat", "testbot", "MUC to join on start")
   flag.Parse()
+}
 
+func main() {
   // Connect XMPP client
   Info.Println("Creating client...")
   // goonfleet dot com promotes a connection to TLS later, the connection needs to start unencrypted
