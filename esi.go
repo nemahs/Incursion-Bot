@@ -27,7 +27,7 @@ func parseResults(resp *http.Response, resultStruct interface{}) error {
 
 //lint:ignore SA4009 resultStruct is an output interface
 func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
-	if req == nil || cache == nil { 
+  if req == nil || cache == nil { 
     return fmt.Errorf("One of the inputs was null")
   }
   
@@ -52,9 +52,7 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
   case http.StatusNotModified:
     cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
     return err
-  case http.StatusServiceUnavailable:
-    fallthrough
-  case http.StatusInternalServerError:
+  case http.StatusServiceUnavailable, http.StatusInternalServerError:
     log.Println("ESI is having problems, returning cached data instead")
     return nil
   default: 
