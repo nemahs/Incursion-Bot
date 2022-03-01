@@ -1,13 +1,13 @@
 package main
 
 import (
-  "bytes"
-  "encoding/json"
-  "fmt"
-  "io/ioutil"
-  "log"
-  "net/http"
-  "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
 )
 
 
@@ -86,7 +86,7 @@ func getIncursions() ([]IncursionResponse, time.Time, error) {
   
   if err != nil {
     Error.Println("Error occured while getting incursions", err)
-    return result, incursionsCache.ExpirationTime, nil
+    return result, incursionsCache.ExpirationTime, err
   }
 
   return result, incursionsCache.ExpirationTime, nil
