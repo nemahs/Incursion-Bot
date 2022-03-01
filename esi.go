@@ -53,7 +53,7 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
 
     return nil
   default: 
-    data, _ := ioutil.ReadAll(resp.Request.Body)
+    data, _ := ioutil.ReadAll(resp.Body)
     return fmt.Errorf("status code %d received from server: %s", resp.StatusCode, string(data))
   }
 
