@@ -31,7 +31,7 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
     return fmt.Errorf("One of the inputs was null")
   }
   
-  resultStruct = cache.Data // Default to returning cached data
+  resultStruct = cache.Data // Default to returning cached data.
 	
   if !cache.Expired() {
     resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
@@ -48,8 +48,9 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
     err = parseResults(resp, resultStruct)
     if err != nil { return err }
     cache.Data = resultStruct
-    fallthrough  // We fallthrough here to let the expiration time get updated
+    fallthrough  // We fallthrough here to let the expiration time get updated after setting the result data correctly.
   case http.StatusNotModified:
+    // Since we default to returning cached data, this only sets the new expiration time and returns the previously cached data.
     cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
     return err
   case http.StatusServiceUnavailable, http.StatusInternalServerError:
