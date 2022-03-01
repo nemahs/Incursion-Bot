@@ -44,16 +44,14 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
   if err != nil { return err }
 
   switch resp.StatusCode {
-  case http.StatusOK: { // Expected case
+  case http.StatusOK: // Expected case
     err = parseResults(resp, resultStruct)
     if err != nil { return err }
     cache.Data = resultStruct
     fallthrough  // We fallthrough here to let the expiration time get updated
-  }
-  case http.StatusNotModified: {
+  case http.StatusNotModified:
     cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
     return err
-  }
   case http.StatusServiceUnavailable:
     fallthrough
   case http.StatusInternalServerError:
