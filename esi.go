@@ -25,7 +25,14 @@ func parseResults(resp *http.Response, resultStruct interface{}) error {
   return err
 }
 
+//lint:ignore SA4009 resultStruct is an output interface
 func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
+  if req == nil || cache == nil { 
+    return fmt.Errorf("One of the inputs was null")
+  }
+  
+  resultStruct = cache.Data // Default to returning cached data.
+	
   if !cache.Expired() {
     resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
     return nil
@@ -35,33 +42,24 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
 
   resp, err := http.DefaultClient.Do(req)
   if err != nil { return err }
-  cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))
-  if err != nil { return err }
 
   switch resp.StatusCode {
-  case http.StatusNotModified: {
-    resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
-
-    return nil
-  }
-  case http.StatusOK: break // Expected case
-  case http.StatusServiceUnavailable:
-    fallthrough
-  case http.StatusInternalServerError:
+  case http.StatusOK: // Expected case
+    err = parseResults(resp, resultStruct)
+    if err != nil { return err }
+    cache.Data = resultStruct
+    fallthrough  // We fallthrough here to let the expiration time get updated after setting the result data correctly.
+  case http.StatusNotModified:
+    // Since we default to returning cached data, this only sets the new expiration time and returns the previously cached data.
+    cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
+    return err
+  case http.StatusServiceUnavailable, http.StatusInternalServerError:
     log.Println("ESI is having problems, returning cached data instead")
-    resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
-
     return nil
   default: 
     data, _ := ioutil.ReadAll(resp.Body)
     return fmt.Errorf("status code %d received from server: %s", resp.StatusCode, string(data))
   }
-
-  err = parseResults(resp, resultStruct)
-  if err != nil { return err }
-  cache.Data = resultStruct
-
-  return nil
 }
 
 // Incursion functions
