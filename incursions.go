@@ -92,5 +92,5 @@ func CreateNewIncursion(incursion IncursionResponse) (Incursion, error) {
     Distance: distance,
   }
 
-  return newIncursion
+  return newIncursion, nil
 }
