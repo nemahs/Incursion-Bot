@@ -77,7 +77,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       if err != nil {
         if existingIncursion != nil { 
           // Keep the previous incursion to not trigger a despawn
-          newIncursionList = append(newIncursionList, existingIncursion)
+          newIncursionList = append(newIncursionList, *existingIncursion)
         }
         
         continue
