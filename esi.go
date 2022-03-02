@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -34,13 +35,17 @@ func (c *ESI) parseResults(resp *http.Response, resultStruct interface{}) error 
   return err
 }
 
+func parseExpirationTime(resp *http.Response) (time.Time, error) {
+    return time.Parse(time.RFC1123 , resp.Header.Get("Expires"))
+}
+
 func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
   if req == nil || cache == nil { 
     return fmt.Errorf("one of the inputs was null")
   }
   
   if !cache.Expired() {
-    resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
+    reflect.ValueOf(resultStruct).Elem().Set(cache.Data)
     return nil
   }
 
@@ -53,14 +58,13 @@ func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct inte
   case http.StatusOK: // Expected case
     err = c.parseResults(resp, resultStruct)
     if err != nil { return err }
-    cache.Data = resultStruct
-    cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))
+    cache.Data = reflect.ValueOf(resultStruct).Elem()
+    cache.ExpirationTime, err = parseExpirationTime(resp)
     cache.Etag = resp.Header.Get("ETag")
     return err
   case http.StatusNotModified:
-    // Since we default to returning cached data, this only sets the new expiration time and returns the previously cached data.
-    resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
-    cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
+    reflect.ValueOf(resultStruct).Elem().Set(cache.Data)
+    cache.ExpirationTime, err = parseExpirationTime(resp)
     return err
   case http.StatusServiceUnavailable, http.StatusInternalServerError:
     log.Println("ESI is having problems, returning cached data instead")
@@ -74,11 +78,11 @@ func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct inte
 // Incursion functions
 
 type IncursionResponse struct {
-  ConstellationID   int `json:"constellation_id"`
-  IncursionSystems  []int `json:"infested_solar_systems"`
-  Influence         float64
-  StagingID         int `json:"staging_solar_system_id"`
-  State             IncursionState
+  ConstellationID   int            `json:"constellation_id"`
+  IncursionSystems  []int          `json:"infested_solar_systems"`
+  Influence         float64        `json:"influence"`
+  StagingID         int            `json:"staging_solar_system_id"`
+  State             IncursionState `json:"state"`
 }
 
 var incursionsCache CacheEntry

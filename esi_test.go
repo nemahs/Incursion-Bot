@@ -1,14 +1,15 @@
 package main
 
 import (
-  "net/http/httptest"
-  "net/http"
-  "testing"
-  "encoding/json"
-  "time"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"testing"
+	"time"
 )
 
-var testReturn []int = []int{3, 5}
+var testReturn int = 3
 const testETag = "abcde"
 
 func return304 (rw http.ResponseWriter, req *http.Request) {
@@ -24,9 +25,14 @@ func successfulReturn (rw http.ResponseWriter, req *http.Request) {
   rw.Write(result)
 }
 
+func intCompare(t *testing.T, expected int, actual int) {
+  if expected != actual { t.Errorf("Expected %d, got %d", expected, actual) }
+}
+
 func TestCachedCall (t *testing.T) {
   esi := ESI{}
-  var result []int
+  var result int
+  cacheValue := 5
   
   server := httptest.NewServer(http.HandlerFunc(successfulReturn))
   
@@ -42,17 +48,37 @@ func TestCachedCall (t *testing.T) {
   // Normal path
   err = esi.cachedCall(testReq, &cache, &result)
   if err != nil { t.Errorf("Expected call to return successfully, got %s", err) }
-  if result[0] != 3 { t.Errorf("Expected result to be %d, got %d", testReturn, result) }
-  if cache.Data.([]int)[0] != 3 { t.Errorf("Expected cache to be updated, was instead %d", cache.Data) }
+  intCompare(t, testReturn, result)
+  intCompare(t, testReturn, int(cache.Data.Int()))
   if cache.Etag != testETag { t.Errorf("Expected Etag to be updated") }
   
-  server.Config.Handler = http.HandlerFunc(return304)
-  cache.Data = 5
+  cache.Data.Set(reflect.ValueOf(cacheValue))
+  cache.ExpirationTime = time.Time{}
+  if !cache.Expired() { t.Errorf("Cache should be expired, is not") }
   
   // Expired cache
   err = esi.cachedCall(testReq, &cache, &result)
   if err != nil { t.Errorf("Expected call to return successfully, got %s", err) }
-  if result[0] != 3 { t.Errorf("Expected result to be %d, got %d", 3, result) }
-  if cache.Data.([]int)[0] != 3 { t.Errorf("Expected cache to be updated, was instead %d", cache.Data) }  
+  intCompare(t, testReturn, result)
+  intCompare(t, testReturn, int(cache.Data.Int()))
+
+  // Non-expired cache
+  cache.Data.Set(reflect.ValueOf(cacheValue))
+  cache.ExpirationTime = time.Now().Add(time.Minute)
+  if cache.Expired() { t.Errorf("Cache should not be expired, but is") }
+
+  err = esi.cachedCall(testReq, &cache, &result)
+  if err != nil { t.Errorf("Expected call to return successfully, got %s", err) }
+  intCompare(t, cacheValue, result)
   
+  // NOT MODIFIED
+  server.Config.Handler = http.HandlerFunc(return304)
+  cache.ExpirationTime = time.Time{}
+  cache.Data.Set(reflect.ValueOf(cacheValue))
+  err = esi.cachedCall(testReq, &cache, &result)
+  if err != nil { t.Errorf("Expected call to return successfully, got %s", err) }
+  intCompare(t, cacheValue, result)
+  if cache.ExpirationTime.IsZero() { t.Errorf("Expected cache expiration to be updated but it was not")}
+
+
 }
