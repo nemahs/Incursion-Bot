@@ -43,6 +43,10 @@ func (list *IncursionList) find(stagingId int) *Incursion {
 
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
 func UpdateIncursion(incursion *Incursion, newData IncursionResponse) bool {
+  if incursion == nil {
+    return false
+  }
+  
   updated := false
 
   if incursion.State != newData.State {
@@ -55,11 +59,27 @@ func UpdateIncursion(incursion *Incursion, newData IncursionResponse) bool {
 }
 
 // Creates a new Incursion object from ESI data
-func CreateNewIncursion(incursion IncursionResponse) Incursion {
-  stagingData := getSystemInfo(incursion.StagingID)
-  constData := getConstInfo(incursion.ConstellationID)
-  names := getNames([]int{constData.RegionID})  
-  distance := GetRouteLength(homeSystem, incursion.StagingID)
+func CreateNewIncursion(incursion IncursionResponse) (Incursion, error) {
+  stagingData, err := getSystemInfo(incursion.StagingID)
+  if err != nil {
+    return Incursion{}, err
+  }
+  
+  constData, err := getConstInfo(incursion.ConstellationID)
+  if err != nil {
+    return Incursion{}, err
+  }
+  
+  names, err := getNames([]int{constData.RegionID})  
+  if err != nil {
+    return Incursion{}, err
+  }
+  
+  distance, err := GetRouteLength(homeSystem, incursion.StagingID)
+  if err != nil {
+    return Incursion{}, err
+  }
+  
 
   newIncursion := Incursion{
     Constellation: NamedItem{ID: constData.ID, Name: constData.Name},
@@ -72,5 +92,5 @@ func CreateNewIncursion(incursion IncursionResponse) Incursion {
     Distance: distance,
   }
 
-  return newIncursion
+  return newIncursion, nil
 }

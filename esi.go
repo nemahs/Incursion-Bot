@@ -100,7 +100,7 @@ type NameResponse struct {
 type NameMap map[int]string // Map of item IDs to names
 
 var cachedNames NameMap = make(NameMap)
-func getNames(ids []int) NameMap {
+func getNames(ids []int) (NameMap, error) {
   var responseData []NameResponse
   result := make(NameMap)
 
@@ -118,38 +118,38 @@ func getNames(ids []int) NameMap {
 
   if len(unknownIDs) == 0 {
     // We already know all the IDs, no need to bother ESI
-    return result
+    return result, nil
   }
 
   // Find the remaining names
   data, err := json.Marshal(unknownIDs)
   if err != nil {
     Error.Println("Failed to marshal IDs into json", err)
-    return result
+    return result, err
   }
 
   req, err := http.NewRequest("POST", esiURL + "/universe/names/", bytes.NewBuffer(data))
   if err != nil {
     Error.Println("Failed to create name request", req)
-    return result
+    return result, err
   }
 
   resp, err := http.DefaultClient.Do(req)
   if err != nil {
     Error.Println("Failed HTTP request for names", err)
-    return result
+    return result, err
   }
 
   if resp.StatusCode != http.StatusOK {
     body, _ := ioutil.ReadAll(resp.Body)
     Error.Printf("Name endpoint returned a status code of %d: %s", resp.StatusCode, string(body))
-    return result
+    return result, err
   }
 
   err = parseResults(resp, &responseData)
   if err != nil {
     Error.Println("Failed to parse name results", err)
-    return result
+    return result, err
   }
 
 
@@ -159,7 +159,7 @@ func getNames(ids []int) NameMap {
     result[nameData.ID] = nameData.Name
   }
 
-  return result
+  return result, nil
 }
 
 // ------- CONSTELLATION INFO --------
@@ -171,22 +171,23 @@ type ConstellationData struct {
 }
 
 var constDataCache CacheMap = make(CacheMap)
-func getConstInfo(constID int) ConstellationData {
+func getConstInfo(constID int) (ConstellationData, error) {
   var response ConstellationData
   url := fmt.Sprintf("%s/universe/constellations/%d/", esiURL, constID)
   req, err := http.NewRequest("GET", url, nil)
   if err != nil {
     Error.Printf("Failed to create constellation info request for id: %d", constID)
-    return response
+    return response, err
   }
 
   cacheData := constDataCache[constID]
   err = cachedCall(req, &cacheData, &response)
   if err != nil {
     Error.Println("Error occurred in getting the constellation data", err)
+	  return response, err
   }
 
-  return response
+  return response, nil
 }
 
 // ----------- SYSTEM INFO -----------
@@ -199,24 +200,24 @@ type SystemData struct {
 }
 
 var systemCache CacheMap = make(CacheMap)
-func getSystemInfo(systemID int) SystemData {
+func getSystemInfo(systemID int) (SystemData, error) {
   var results SystemData
   url := fmt.Sprintf("%s/universe/systems/%d/", esiURL, systemID)
   req, err := http.NewRequest("GET", url, nil)
   if err != nil {
     Error.Println("An error occurred creating the system info request", err)
-    return results
+    return results, err
   }
 
   cacheData := systemCache[systemID]
   err = cachedCall(req, &cacheData, &results)
   if err != nil {
     Error.Println("An error occurred getting system info", err)
-    return results
+    return results, err
   }
   results.SecurityClass = guessSecClass(results.SecStatus)
 
-  return results
+  return results, nil
 }
 
 
@@ -225,22 +226,22 @@ func getSystemInfo(systemID int) SystemData {
 // TODO: Cache this endpoint
 type Route []int
 
-func GetRouteLength(startSystem int, endSystem int) int {
+func GetRouteLength(startSystem int, endSystem int) (int, error) {
   var resultData Route
   url := fmt.Sprintf("%s/route/%d/%d/", esiURL, startSystem, endSystem)
   resp, err := http.Get(url)
   if err != nil {
     Error.Println("Failed HTTP request for route length", err)
-    return -1
+    return -1, err
   }
 
   err = parseResults(resp, &resultData)
   if err != nil {
     Error.Println("Error occurred parsing results", err)
-    return -1
+    return -1, err
   }
 
-  return len(resultData) - 2 // Subtract off the start and end systems
+  return len(resultData) - 2, nil // Subtract off the start and end systems
 }
 
 type SecurityClass string

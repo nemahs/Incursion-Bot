@@ -72,16 +72,29 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     }
     
     for _, incursionData := range incursionResponses {
-      stagingInfo := getSystemInfo(incursionData.StagingID)
+      existingIncursion := incursions.find(incursionData.StagingID)
+      stagingInfo, err := getSystemInfo(incursionData.StagingID)
+      if err != nil {
+        if existingIncursion != nil { 
+          // Keep the previous incursion to not trigger a despawn
+          newIncursionList = append(newIncursionList, *existingIncursion)
+        }
+        
+        continue
+      }
 
       if stagingInfo.SecurityClass == HighSec {
         continue // We do not give a fuck about highsec
       }
 
-      existingIncursion := incursions.find(incursionData.StagingID)
       if existingIncursion == nil {
         // No existing incursion found, make a new one
-        newIncursion := CreateNewIncursion(incursionData)
+        newIncursion, err := CreateNewIncursion(incursionData)
+	      if err != nil {
+          // Skip this incursion, it's in a weird state
+          continue 
+	      }
+	      
         newIncursionList = append(newIncursionList, newIncursion)
         Info.Printf("Found new incursion in %s", newIncursion.ToString())
 
