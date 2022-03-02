@@ -118,7 +118,7 @@ func getNames(ids []int) (NameMap, error) {
 
   if len(unknownIDs) == 0 {
     // We already know all the IDs, no need to bother ESI
-    return resultm nil
+    return result, nil
   }
 
   // Find the remaining names
