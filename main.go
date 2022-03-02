@@ -1,14 +1,14 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"log"
-	"os"
-	"sync"
-	"time"
+  "flag"
+  "fmt"
+  "log"
+  "os"
+  "sync"
+  "time"
 
-	"github.com/mattn/go-xmpp"
+  "github.com/mattn/go-xmpp"
 )
 
 // TODO: Estimate time left in spawn
@@ -91,11 +91,10 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       if existingIncursion == nil {
         // No existing incursion found, make a new one
         newIncursion, err := CreateNewIncursion(incursionData)
-	      if err != nil {
-          // Skip this incursion, it's in a weird state
-          continue 
-	      }
-	      
+        if err != nil {
+          continue // Skip this incursion, it's in a weird state
+        }
+        
         newIncursionList = append(newIncursionList, newIncursion)
         Info.Printf("Found new incursion in %s", newIncursion.ToString())
 
@@ -103,7 +102,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
         if !firstRun {
           var msgText string
           if contains(getHomeRegions(), newIncursion.Region.ID) {
-            msgText = fmt.Sprintf(":siren: New incursion detected in a home region! %s -%d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
+            msgText = fmt.Sprintf(":siren: New incursion detected in a home region! %s - %d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
           } else {
             msgText = fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
           }

@@ -1,21 +1,21 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"reflect"
-	"time"
+  "bytes"
+  "encoding/json"
+  "fmt"
+  "io/ioutil"
+  "log"
+  "net/http"
+  "reflect"
+  "time"
 )
 
 
 const esiURL string = "https://esi.evetech.net/latest"
 
 type ESI struct {
-	baseURL string
+  baseURL string
 }
 
 func NewClient(baseURL string) ESI {
@@ -197,7 +197,7 @@ func (c *ESI) getConstInfo(constID int) (ConstellationData, error) {
   err = c.cachedCall(req, &cacheData, &response)
   if err != nil {
     Error.Println("Error occurred in getting the constellation data", err)
-	  return response, err
+    return response, err
   }
 
   return response, nil
