@@ -43,9 +43,12 @@ func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct inte
   if req == nil || cache == nil { 
     return fmt.Errorf("one of the inputs was null")
   }
+
+  result := reflect.ValueOf(resultStruct)
+
   
   if !cache.Expired() {
-    reflect.ValueOf(resultStruct).Elem().Set(cache.Data)
+    result.Elem().Set(cache.Data)
     return nil
   }
 
@@ -58,16 +61,17 @@ func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct inte
   case http.StatusOK: // Expected case
     err = c.parseResults(resp, resultStruct)
     if err != nil { return err }
-    cache.Data = reflect.ValueOf(resultStruct).Elem()
+    cache.Data = result.Elem()
     cache.ExpirationTime, err = parseExpirationTime(resp)
     cache.Etag = resp.Header.Get("ETag")
     return err
   case http.StatusNotModified:
-    reflect.ValueOf(resultStruct).Elem().Set(cache.Data)
+    result.Elem().Set(cache.Data)
     cache.ExpirationTime, err = parseExpirationTime(resp)
     return err
-  case http.StatusServiceUnavailable, http.StatusInternalServerError:
+  case http.StatusServiceUnavailable, http.StatusInternalServerError, http.StatusGatewayTimeout:
     log.Println("ESI is having problems, returning cached data instead")
+    result.Elem().Set(cache.Data)
     return nil
   default: 
     data, _ := ioutil.ReadAll(resp.Body)
@@ -106,9 +110,9 @@ func (c *ESI) getIncursions() ([]IncursionResponse, time.Time, error) {
 // --------- NAME RESOLUTION ---------
 
 type NameResponse struct {
-  Category  string
-  ID        int
-  Name      string
+  Category  string `json:"category"`
+  ID        int    `json:"id"`
+  Name      string `json:"name"`
 }
 type NameMap map[int]string // Map of item IDs to names
 
@@ -178,9 +182,9 @@ func (c *ESI) getNames(ids []int) (NameMap, error) {
 // ------- CONSTELLATION INFO --------
 
 type ConstellationData struct {
-  ID        int `json:"constellation_id"`
-  Name      string
-  RegionID  int `json:"region_id"`
+  ID        int     `json:"constellation_id"`
+  Name      string  `json:"name"`
+  RegionID  int     `json:"region_id"`
 }
 
 var constDataCache CacheMap = make(CacheMap)
@@ -206,10 +210,10 @@ func (c *ESI) getConstInfo(constID int) (ConstellationData, error) {
 // ----------- SYSTEM INFO -----------
 
 type SystemData struct {
-  ID            int `json:"system_id"`
-  Name          string
+  ID            int     `json:"system_id"`
+  Name          string  `json:"name"`
   SecStatus     float64 `json:"security_status"`
-  SecurityClass SecurityClass
+  SecurityClass SecurityClass // Not part of the response
 }
 
 var systemCache CacheMap = make(CacheMap)
