@@ -81,7 +81,12 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       existingIncursion := incursions.find(incursionData.StagingID)
       if existingIncursion == nil {
         // No existing incursion found, make a new one
-        newIncursion := CreateNewIncursion(incursionData)
+        newIncursion, err := CreateNewIncursion(incursionData)
+	      if err != nil {
+          // Skip this incursion, it's in a weird state
+          continue
+	      }
+	      
         newIncursionList = append(newIncursionList, newIncursion)
         Info.Printf("Found new incursion in %s", newIncursion.ToString())
 
