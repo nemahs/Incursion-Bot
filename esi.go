@@ -17,22 +17,20 @@ const esiURL string = "https://esi.evetech.net/latest"
 
 // Parse JSON results from HTTP response into a given struct
 func parseResults(resp *http.Response, resultStruct interface{}) error {
-  parsedBody, err := ioutil.ReadAll(resp.Body)
+  if resp == nil { return fmt.Errorf("resp was nil") }
 
+  parsedBody, err := ioutil.ReadAll(resp.Body)
   if err != nil { return err }
 
   err = json.Unmarshal(parsedBody, resultStruct)
   return err
 }
 
-//lint:ignore SA4009 resultStruct is an output interface
 func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
   if req == nil || cache == nil { 
-    return fmt.Errorf("One of the inputs was null")
+    return fmt.Errorf("one of the inputs was null")
   }
   
-  resultStruct = cache.Data // Default to returning cached data.
-	
   if !cache.Expired() {
     resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
     return nil
@@ -48,9 +46,11 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
     err = parseResults(resp, resultStruct)
     if err != nil { return err }
     cache.Data = resultStruct
-    fallthrough  // We fallthrough here to let the expiration time get updated after setting the result data correctly.
+    cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
+    return err
   case http.StatusNotModified:
     // Since we default to returning cached data, this only sets the new expiration time and returns the previously cached data.
+    resultStruct = cache.Data //lint:ignore SA4006 resultStruct is an output interface
     cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
     return err
   case http.StatusServiceUnavailable, http.StatusInternalServerError:

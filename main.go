@@ -1,14 +1,14 @@
 package main
 
 import (
-  "flag"
-  "fmt"
-  "log"
-  "os"
-  "sync"
-  "time"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"sync"
+	"time"
 
-  "github.com/mattn/go-xmpp"
+	"github.com/mattn/go-xmpp"
 )
 
 // TODO: Estimate time left in spawn
@@ -207,15 +207,15 @@ func init() {
   commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
   commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
   commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
-  
+}
+
+func main() {
   // Parse command line flags
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
   jabberChannel = flag.String("chat", "testbot", "MUC to join on start")
   flag.Parse()
-}
 
-func main() {
   // Connect XMPP client
   Info.Println("Creating client...")
   // goonfleet dot com promotes a connection to TLS later, the connection needs to start unencrypted
