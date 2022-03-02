@@ -29,6 +29,7 @@ var commandsMap CommandMap     // Map if all supported commands, their functions
 var incursions IncursionList   // List of currently tracked incursions
 var incursionsMutex sync.Mutex // Synchronize access to the incursionsList
 var jabberChannel *string      // Jabber channel to broadcast to
+var esi ESI                    // ESI client    
 
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
@@ -63,7 +64,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   for {
     var newIncursionList IncursionList // List of incursions we've seen in this loop
 
-    incursionResponses, nextPollTime, err := getIncursions()
+    incursionResponses, nextPollTime, err := esi.getIncursions()
 
     if err != nil {
       Warning.Println("Error occurred getting incursions, sleeping 1 min then reattempting", err)
@@ -73,7 +74,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     
     for _, incursionData := range incursionResponses {
       existingIncursion := incursions.find(incursionData.StagingID)
-      stagingInfo, err := getSystemInfo(incursionData.StagingID)
+      stagingInfo, err := esi.getSystemInfo(incursionData.StagingID)
       if err != nil {
         if existingIncursion != nil { 
           // Keep the previous incursion to not trigger a despawn
@@ -185,7 +186,7 @@ func getUptime(msg xmpp.Chat) xmpp.Chat {
 
 func printESIStatus(msg xmpp.Chat) xmpp.Chat {
   var status string
-  if checkESI() { status = "GOOD" } else { status = "BAD" }
+  if esi.CheckESI() { status = "GOOD" } else { status = "BAD" }
   msgText := fmt.Sprintf("Connection to ESI is %s", status)
   Info.Printf("Sending ESI status in response to a message from %s", msg.Remote)
   return createReply(msg, msgText)
@@ -220,6 +221,8 @@ func init() {
   commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
   commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
   commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
+  
+  esi = NewClient(esiURL)
 }
 
 func main() {

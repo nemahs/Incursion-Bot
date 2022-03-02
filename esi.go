@@ -13,10 +13,18 @@ import (
 
 const esiURL string = "https://esi.evetech.net/latest"
 
+type ESI struct {
+	baseURL string
+}
+
+func NewClient(baseURL string) ESI {
+  return ESI{baseURL: baseURL}
+}
+
 // Util functions
 
 // Parse JSON results from HTTP response into a given struct
-func parseResults(resp *http.Response, resultStruct interface{}) error {
+func (c *ESI) parseResults(resp *http.Response, resultStruct interface{}) error {
   if resp == nil { return fmt.Errorf("resp was nil") }
 
   parsedBody, err := ioutil.ReadAll(resp.Body)
@@ -26,7 +34,7 @@ func parseResults(resp *http.Response, resultStruct interface{}) error {
   return err
 }
 
-func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
+func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) error {
   if req == nil || cache == nil { 
     return fmt.Errorf("one of the inputs was null")
   }
@@ -43,10 +51,11 @@ func cachedCall(req *http.Request, cache *CacheEntry, resultStruct interface{}) 
 
   switch resp.StatusCode {
   case http.StatusOK: // Expected case
-    err = parseResults(resp, resultStruct)
+    err = c.parseResults(resp, resultStruct)
     if err != nil { return err }
     cache.Data = resultStruct
-    cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))  
+    cache.ExpirationTime, err = time.Parse(time.RFC1123 , resp.Header.Get("Expires"))
+    cache.Etag = resp.Header.Get("ETag")
     return err
   case http.StatusNotModified:
     // Since we default to returning cached data, this only sets the new expiration time and returns the previously cached data.
@@ -73,14 +82,14 @@ type IncursionResponse struct {
 }
 
 var incursionsCache CacheEntry
-func getIncursions() ([]IncursionResponse, time.Time, error) {
+func (c *ESI) getIncursions() ([]IncursionResponse, time.Time, error) {
   var result []IncursionResponse
-  req, err := http.NewRequest("GET", esiURL + "/incursions/", nil)
+  req, err := http.NewRequest("GET", c.baseURL + "/incursions/", nil)
   if err != nil {
     Error.Println("Failed to create request for incursions", err)
     return result, incursionsCache.ExpirationTime, err
   }
-  err = cachedCall(req, &incursionsCache, &result)
+  err = c.cachedCall(req, &incursionsCache, &result)
   
   if err != nil {
     Error.Println("Error occured while getting incursions", err)
@@ -100,7 +109,7 @@ type NameResponse struct {
 type NameMap map[int]string // Map of item IDs to names
 
 var cachedNames NameMap = make(NameMap)
-func getNames(ids []int) (NameMap, error) {
+func (c *ESI) getNames(ids []int) (NameMap, error) {
   var responseData []NameResponse
   result := make(NameMap)
 
@@ -128,7 +137,7 @@ func getNames(ids []int) (NameMap, error) {
     return result, err
   }
 
-  req, err := http.NewRequest("POST", esiURL + "/universe/names/", bytes.NewBuffer(data))
+  req, err := http.NewRequest("POST", c.baseURL + "/universe/names/", bytes.NewBuffer(data))
   if err != nil {
     Error.Println("Failed to create name request", req)
     return result, err
@@ -146,7 +155,7 @@ func getNames(ids []int) (NameMap, error) {
     return result, err
   }
 
-  err = parseResults(resp, &responseData)
+  err = c.parseResults(resp, &responseData)
   if err != nil {
     Error.Println("Failed to parse name results", err)
     return result, err
@@ -171,9 +180,9 @@ type ConstellationData struct {
 }
 
 var constDataCache CacheMap = make(CacheMap)
-func getConstInfo(constID int) (ConstellationData, error) {
+func (c *ESI) getConstInfo(constID int) (ConstellationData, error) {
   var response ConstellationData
-  url := fmt.Sprintf("%s/universe/constellations/%d/", esiURL, constID)
+  url := fmt.Sprintf("%s/universe/constellations/%d/", c.baseURL, constID)
   req, err := http.NewRequest("GET", url, nil)
   if err != nil {
     Error.Printf("Failed to create constellation info request for id: %d", constID)
@@ -181,7 +190,7 @@ func getConstInfo(constID int) (ConstellationData, error) {
   }
 
   cacheData := constDataCache[constID]
-  err = cachedCall(req, &cacheData, &response)
+  err = c.cachedCall(req, &cacheData, &response)
   if err != nil {
     Error.Println("Error occurred in getting the constellation data", err)
 	  return response, err
@@ -200,9 +209,9 @@ type SystemData struct {
 }
 
 var systemCache CacheMap = make(CacheMap)
-func getSystemInfo(systemID int) (SystemData, error) {
+func (c *ESI) getSystemInfo(systemID int) (SystemData, error) {
   var results SystemData
-  url := fmt.Sprintf("%s/universe/systems/%d/", esiURL, systemID)
+  url := fmt.Sprintf("%s/universe/systems/%d/", c.baseURL, systemID)
   req, err := http.NewRequest("GET", url, nil)
   if err != nil {
     Error.Println("An error occurred creating the system info request", err)
@@ -210,7 +219,7 @@ func getSystemInfo(systemID int) (SystemData, error) {
   }
 
   cacheData := systemCache[systemID]
-  err = cachedCall(req, &cacheData, &results)
+  err = c.cachedCall(req, &cacheData, &results)
   if err != nil {
     Error.Println("An error occurred getting system info", err)
     return results, err
@@ -226,16 +235,16 @@ func getSystemInfo(systemID int) (SystemData, error) {
 // TODO: Cache this endpoint
 type Route []int
 
-func GetRouteLength(startSystem int, endSystem int) (int, error) {
+func (c *ESI) GetRouteLength(startSystem int, endSystem int) (int, error) {
   var resultData Route
-  url := fmt.Sprintf("%s/route/%d/%d/", esiURL, startSystem, endSystem)
+  url := fmt.Sprintf("%s/route/%d/%d/", c.baseURL, startSystem, endSystem)
   resp, err := http.Get(url)
   if err != nil {
     Error.Println("Failed HTTP request for route length", err)
     return -1, err
   }
 
-  err = parseResults(resp, &resultData)
+  err = c.parseResults(resp, &resultData)
   if err != nil {
     Error.Println("Error occurred parsing results", err)
     return -1, err
@@ -261,9 +270,9 @@ func guessSecClass(status float64) SecurityClass {
   return NullSec
 }
 
-func checkESI() bool {
+func (c *ESI) CheckESI() bool {
   // TODO: Mess with this so it uses swagger to verify the integrety of each endpoint
-  url := "https://esi.evetech.net/latest/swagger.json"
+  url := fmt.Sprintf("%s/swagger.json", c.baseURL)
   resp, err := http.Get(url)
 
   if err != nil {
