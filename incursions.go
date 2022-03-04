@@ -60,22 +60,22 @@ func UpdateIncursion(incursion *Incursion, newData IncursionResponse) bool {
 
 // Creates a new Incursion object from ESI data
 func CreateNewIncursion(incursion IncursionResponse) (Incursion, error) {
-  stagingData, err := getSystemInfo(incursion.StagingID)
+  stagingData, err := esi.getSystemInfo(incursion.StagingID)
   if err != nil {
     return Incursion{}, err
   }
   
-  constData, err := getConstInfo(incursion.ConstellationID)
+  constData, err := esi.getConstInfo(incursion.ConstellationID)
   if err != nil {
     return Incursion{}, err
   }
   
-  names, err := getNames([]int{constData.RegionID})  
+  names, err := esi.getNames([]int{constData.RegionID})  
   if err != nil {
     return Incursion{}, err
   }
   
-  distance, err := GetRouteLength(homeSystem, incursion.StagingID)
+  distance, err := esi.GetRouteLength(homeSystem, incursion.StagingID)
   if err != nil {
     return Incursion{}, err
   }
