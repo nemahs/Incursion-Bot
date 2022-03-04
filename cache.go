@@ -1,9 +1,12 @@
 package main
 
-import "time"
+import (
+  "reflect"
+  "time"
+)
 
 type CacheEntry struct {
-  Data           interface{}
+  Data           reflect.Value
   ExpirationTime time.Time
   Etag string
 }
