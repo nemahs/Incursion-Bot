@@ -36,25 +36,6 @@ func getHomeRegions() []int {
   return []int{10000060, 10000050, 10000063}
 }
 
-func contains(slice []int, val int) bool {
-  for _, v := range slice {
-    if v == val { return true }
-  }
-
-  return false
-}
-
-// Recovers from any uncaught panics so that the main thread
-// can restart the routine.
-func cleanup(channel chan<- xmpp.Chat) {
-  err := recover()
-  if err != nil {
-    Warning.Println("Recovered from unexpected error: ", err)
-  }
-  
-  close(channel)
-}
-
 // Periodically polls ESI to get incursion data, and notifies chat of any changes
 func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   defer cleanup(msgChan)
@@ -80,6 +61,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
           newIncursionList = append(newIncursionList, *existingIncursion)
         }
         
+        Error.Printf("Got error while parsing incursion system data for %d: %s", incursionData.StagingID, err)
         continue
       }
 
@@ -90,11 +72,11 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       if existingIncursion == nil {
         // No existing incursion found, make a new one
         newIncursion, err := CreateNewIncursion(incursionData)
-	      if err != nil {
-          // Skip this incursion, it's in a weird state
-          continue 
-	      }
-	      
+        if err != nil {
+          Error.Printf("Got error while creating an incursion: %s", err)
+          continue // Skip this incursion, it's in a weird state
+        }
+        
         newIncursionList = append(newIncursionList, newIncursion)
         Info.Printf("Found new incursion in %s", newIncursion.ToString())
 
