@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -191,6 +192,25 @@ func listIncursions(msg xmpp.Chat) xmpp.Chat {
   return createReply(msg, responseText)
 }
 
+func parseFile(fileName string) (*string, *string) {
+  f, err := os.Open(fileName)
+  if err != nil {
+    panic(err)
+  }
+  defer f.Close()
+
+  scanner := bufio.NewScanner(f)
+
+  scanner.Scan()
+  userName := scanner.Text()
+
+  scanner.Scan()
+  password := scanner.Text()
+  
+  return &userName, &password
+
+}
+
 
 func init() {
   // Create loggers
@@ -212,7 +232,12 @@ func main() {
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
   jabberChannel = flag.String("chat", "testbot", "MUC to join on start")
+  userFile := flag.String("file", "", "File containing jabber username and password, line separated")
   flag.Parse()
+
+  if *userFile != "" {
+    userName, password = parseFile(*userFile)
+  }
 
   // Connect XMPP client
   Info.Println("Creating client...")
