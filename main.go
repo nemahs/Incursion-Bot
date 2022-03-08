@@ -160,7 +160,7 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
 
 // Respond with the amount of time the bot's been up
 func getUptime(msg xmpp.Chat) xmpp.Chat {
-  currentUptime := time.Since(startTime).Round(time.Second)
+  currentUptime := time.Since(startTime).Truncate(time.Second)
   msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
 
   Info.Printf("Sending uptime in response to a message from %s", msg.Remote)
