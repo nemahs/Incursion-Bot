@@ -1,12 +1,12 @@
 package main
 
 import (
-  "encoding/json"
-  "net/http"
-  "net/http/httptest"
-  "reflect"
-  "testing"
-  "time"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"testing"
+	"time"
 )
 
 var testReturn int = 3
@@ -44,7 +44,7 @@ func TestCachedCall (t *testing.T) {
   
   err = esi.cachedCall(nil, &cache, &result)
   if err == nil { t.Errorf("Expected call to return an error for a nil request") }
-  
+
   // Normal path
   err = esi.cachedCall(testReq, &cache, &result)
   if err != nil { t.Errorf("Expected call to return successfully, got %s", err) }
@@ -80,5 +80,11 @@ func TestCachedCall (t *testing.T) {
   intCompare(t, cacheValue, result)
   if cache.ExpirationTime.IsZero() { t.Errorf("Expected cache expiration to be updated but it was not")}
 
-
+  // Zero Cache with Server error
+  server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(http.StatusInternalServerError)  
+  })
+  cache.Data = reflect.Value{}
+  err = esi.cachedCall(testReq, &cache, &result)
+  if err == nil { t.Errorf("Expected error return but none was sent") }
 }

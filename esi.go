@@ -1,14 +1,14 @@
 package main
 
 import (
-  "bytes"
-  "encoding/json"
-  "fmt"
-  "io/ioutil"
-  "log"
-  "net/http"
-  "reflect"
-  "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"reflect"
+	"time"
 )
 
 
@@ -66,11 +66,19 @@ func (c *ESI) cachedCall(req *http.Request, cache *CacheEntry, resultStruct inte
     cache.Etag = resp.Header.Get("ETag")
     return err
   case http.StatusNotModified:
+    if !cache.Data.IsValid() {
+      return fmt.Errorf("cache was empty")
+    }
+
     result.Elem().Set(cache.Data)
     cache.ExpirationTime, err = parseExpirationTime(resp)
     return err
   case http.StatusServiceUnavailable, http.StatusInternalServerError, http.StatusGatewayTimeout:
     log.Println("ESI is having problems, returning cached data instead")
+    if !cache.Data.IsValid() {
+      return fmt.Errorf("cache was empty")
+    }
+
     result.Elem().Set(cache.Data)
     return nil
   default: 
