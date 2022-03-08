@@ -2,9 +2,11 @@ package main
 
 import "github.com/mattn/go-xmpp"
 
+type IDList []int
+
 // Check if a slice contains the speicifed value
-func contains(slice []int, val int) bool {
-	for _, v := range slice {
+func (list IDList) contains(val int) bool {
+	for _, v := range list {
 		if v == val {
 			return true
 		}

@@ -34,8 +34,8 @@ var esi ESI                    // ESI client
 
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
-func getHomeRegions() []int {
-  return []int{10000060, 10000050, 10000063}
+func getHomeRegions() IDList {
+  return IDList{10000060, 10000050, 10000063}
 }
 
 // Periodically polls ESI to get incursion data, and notifies chat of any changes
@@ -85,7 +85,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
         // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
         if !firstRun {
           var msgText string
-          if contains(getHomeRegions(), newIncursion.Region.ID) {
+          if getHomeRegions().contains(newIncursion.Region.ID) {
             msgText = fmt.Sprintf(":siren: New incursion detected in a home region! %s - %d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
           } else {
             msgText = fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
@@ -208,7 +208,6 @@ func parseFile(fileName string) (*string, *string) {
   password := scanner.Text()
   
   return &userName, &password
-
 }
 
 
