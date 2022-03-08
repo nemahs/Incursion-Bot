@@ -30,7 +30,8 @@ var commandsMap CommandMap     // Map if all supported commands, their functions
 var incursions IncursionList   // List of currently tracked incursions
 var incursionsMutex sync.Mutex // Synchronize access to the incursionsList
 var jabberChannel *string      // Jabber channel to broadcast to
-var esi ESI                    // ESI client    
+var esi ESI                    // ESI client
+var startTime time.Time        // Time the bot was started
 
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
@@ -157,10 +158,9 @@ func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
 
 // ------------- COMMANDS --------------------
 
-var startTime time.Time = time.Now()
 // Respond with the amount of time the bot's been up
 func getUptime(msg xmpp.Chat) xmpp.Chat {
-  currentUptime := time.Since(startTime)
+  currentUptime := time.Since(startTime).Round(time.Second)
   msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
 
   Info.Printf("Sending uptime in response to a message from %s", msg.Remote)
@@ -218,6 +218,8 @@ func init() {
   Warning = log.New(os.Stdout, "WARN: ", log.LstdFlags|log.Lshortfile|log.LUTC)
   Error = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile|log.LUTC)
   
+	startTime = time.Now()
+	
   // Add commands to the command map
   commandsMap = NewCommandMap()
   commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
