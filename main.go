@@ -1,6 +1,7 @@
 package main
 
 import (
+	"IncursionBot/internal/ESI"
 	"bufio"
 	"flag"
 	"fmt"
@@ -30,7 +31,7 @@ var commandsMap CommandMap     // Map if all supported commands, their functions
 var incursions IncursionList   // List of currently tracked incursions
 var incursionsMutex sync.Mutex // Synchronize access to the incursionsList
 var jabberChannel *string      // Jabber channel to broadcast to
-var esi ESI                    // ESI client
+var esi ESI.ESIClient          // ESI client
 var startTime time.Time        // Time the bot was started
 
 
@@ -47,7 +48,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   for {
     var newIncursionList IncursionList // List of incursions we've seen in this loop
 
-    incursionResponses, nextPollTime, err := esi.getIncursions()
+    incursionResponses, nextPollTime, err := esi.GetIncursions()
 
     if err != nil {
       Warning.Println("Error occurred getting incursions, sleeping 1 min then reattempting", err)
@@ -57,7 +58,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     
     for _, incursionData := range incursionResponses {
       existingIncursion := incursions.find(incursionData.StagingID)
-      stagingInfo, err := esi.getSystemInfo(incursionData.StagingID)
+      stagingInfo, err := esi.GetSystemInfo(incursionData.StagingID)
       if err != nil {
         if existingIncursion != nil { 
           // Keep the previous incursion to not trigger a despawn
@@ -68,7 +69,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
         continue
       }
 
-      if stagingInfo.SecurityClass == HighSec {
+      if stagingInfo.SecurityClass == ESI.HighSec {
         continue // We do not give a fuck about highsec
       }
 
@@ -225,7 +226,7 @@ func init() {
   commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
   commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
   
-  esi = NewClient(esiURL)
+  esi = ESI.NewClient()
 }
 
 func main() {

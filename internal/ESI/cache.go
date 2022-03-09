@@ -1,8 +1,8 @@
-package main
+package ESI
 
 import (
-  "reflect"
-  "time"
+	"reflect"
+	"time"
 )
 
 type CacheEntry struct {
