@@ -42,6 +42,13 @@ func (list *IncursionList) find(stagingId int) *Incursion {
   return nil
 }
 
+type IncursionDataFetcher interface {
+  GetSystemInfo(int) (ESI.SystemData, error)
+  GetConstInfo(int) (ESI.ConstellationData, error)
+  GetNames([]int) (ESI.NameMap, error)
+  GetRouteLength(int, int) (int, error)
+}
+
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
 func UpdateIncursion(incursion *Incursion, newData ESI.IncursionResponse) bool {
   if incursion == nil {
@@ -60,7 +67,7 @@ func UpdateIncursion(incursion *Incursion, newData ESI.IncursionResponse) bool {
 }
 
 // Creates a new Incursion object from ESI data
-func CreateNewIncursion(incursion ESI.IncursionResponse) (Incursion, error) {
+func CreateNewIncursion(incursion ESI.IncursionResponse, esi IncursionDataFetcher) (Incursion, error) {
   stagingData, err := esi.GetSystemInfo(incursion.StagingID)
   if err != nil {
     return Incursion{}, err

@@ -75,7 +75,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
 
       if existingIncursion == nil {
         // No existing incursion found, make a new one
-        newIncursion, err := CreateNewIncursion(incursionData)
+        newIncursion, err := CreateNewIncursion(incursionData, &esi)
         if err != nil {
           Error.Printf("Got error while creating an incursion: %s", err)
           continue // Skip this incursion, it's in a weird state
