@@ -86,12 +86,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
 
         // Don't want to spam chats with "NEW INCURSION" whenever the bot starts, so notifications are inhibited on the first run
         if !firstRun {
-          var msgText string
-          if getHomeRegions().contains(newIncursion.Region.ID) {
-            msgText = fmt.Sprintf(":siren: New incursion detected in a home region! %s - %d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
-          } else {
-            msgText = fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
-          }
+          msgText := getNewIncursionMsg(newIncursion)
           Info.Printf("Sending new incursion notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
@@ -124,6 +119,14 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     firstRun = false
     time.Sleep(time.Until(nextPollTime))
   }
+}
+
+func getNewIncursionMsg(newIncursion Incursion) string {
+	if getHomeRegions().contains(newIncursion.Region.ID) {
+		return fmt.Sprintf(":siren: New incursion detected in a home region! %s - %d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
+	}
+  
+  return fmt.Sprintf("New incursion detected in %s - %d jumps", newIncursion.ToString(), newIncursion.Distance)
 }
 
 // Polls jabber and processes any commands received
