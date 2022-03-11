@@ -1,7 +1,8 @@
 package main
 
 import (
-  "fmt"
+	"IncursionBot/internal/ESI"
+	"fmt"
 )
 
 // TODO: Figure out what to do with this enum
@@ -19,14 +20,14 @@ type NamedItem struct {
 }
 
 type Incursion struct {
-  Constellation NamedItem       // Constellation the incursion is in
-  StagingSystem NamedItem       // Name of the HQ system
-  Influence     float64         // Influence of the incursion from 0 to 1 inclusive
-  Region        NamedItem       // Region the incursion is in
-  State         IncursionState  // Current state of the incursion
-  Security      SecurityClass   // Security type of the staging system
-  SecStatus     float64         // Security status of the staging system, -1 to 1 inclusive
-  Distance      int             // Distance from home system
+  Constellation NamedItem         // Constellation the incursion is in
+  StagingSystem NamedItem         // Name of the HQ system
+  Influence     float64           // Influence of the incursion from 0 to 1 inclusive
+  Region        NamedItem         // Region the incursion is in
+  State         string            // Current state of the incursion
+  Security      ESI.SecurityClass // Security type of the staging system
+  SecStatus     float64           // Security status of the staging system, -1 to 1 inclusive
+  Distance      int               // Distance from home system
 }
 
 func (inc *Incursion) ToString() string {
@@ -41,8 +42,15 @@ func (list *IncursionList) find(stagingId int) *Incursion {
   return nil
 }
 
+type IncursionDataFetcher interface {
+  GetSystemInfo(int) (ESI.SystemData, error)
+  GetConstInfo(int) (ESI.ConstellationData, error)
+  GetNames([]int) (ESI.NameMap, error)
+  GetRouteLength(int, int) (int, error)
+}
+
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
-func UpdateIncursion(incursion *Incursion, newData IncursionResponse) bool {
+func UpdateIncursion(incursion *Incursion, newData ESI.IncursionResponse) bool {
   if incursion == nil {
     return false
   }
@@ -59,18 +67,18 @@ func UpdateIncursion(incursion *Incursion, newData IncursionResponse) bool {
 }
 
 // Creates a new Incursion object from ESI data
-func CreateNewIncursion(incursion IncursionResponse) (Incursion, error) {
-  stagingData, err := esi.getSystemInfo(incursion.StagingID)
+func CreateNewIncursion(incursion ESI.IncursionResponse, esi IncursionDataFetcher) (Incursion, error) {
+  stagingData, err := esi.GetSystemInfo(incursion.StagingID)
   if err != nil {
     return Incursion{}, err
   }
   
-  constData, err := esi.getConstInfo(incursion.ConstellationID)
+  constData, err := esi.GetConstInfo(incursion.ConstellationID)
   if err != nil {
     return Incursion{}, err
   }
   
-  names, err := esi.getNames([]int{constData.RegionID})  
+  names, err := esi.GetNames([]int{constData.RegionID})  
   if err != nil {
     return Incursion{}, err
   }
