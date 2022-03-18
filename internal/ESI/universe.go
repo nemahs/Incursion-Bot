@@ -156,7 +156,7 @@ func (c *ESIClient) GetRouteLength(startSystem int, endSystem int) (int, error) 
     return -1, err
   }
 
-  return len(resultData) - 2, nil // Subtract off the start and end systems
+  return len(resultData) - 1, nil // Subtract off the start and end systems
 }
 
 type SecurityClass string
