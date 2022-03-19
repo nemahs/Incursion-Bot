@@ -99,11 +99,12 @@ func TestNewIncursion(t *testing.T) {
 }
 
 
-func TestUpdateIncursio(t *testing.T) {
+func TestUpdateIncursion(t *testing.T) {
 	var testIncursion Incursion
 	var testResponse ESI.IncursionResponse
 
-	res := UpdateIncursion(nil, testResponse)
+	var testPtr *Incursion = nil
+	res := testPtr.Update(testResponse)
 	assert.False(t, res)
 
 	testIncursion.State = string(Established)
@@ -111,12 +112,12 @@ func TestUpdateIncursio(t *testing.T) {
 	testResponse.State = string(Established)
 	testResponse.Influence = .5
 
-	res = UpdateIncursion(&testIncursion, testResponse)
+	res = testIncursion.Update(testResponse)
 	assert.False(t, res)
 	assert.Equal(t, testResponse.Influence, testIncursion.Influence)
 
 	testResponse.State = string(Mobilizing)
-	res = UpdateIncursion(&testIncursion, testResponse)
+	res = testIncursion.Update(testResponse)
 	assert.True(t, res)
 	assert.Equal(t, testResponse.State, testIncursion.State)
 }

@@ -93,7 +93,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
       } else {
         // Update data and check if anything changed
         Info.Printf("Found existing incursion in %s to update", existingIncursion.ToString())
-        if UpdateIncursion(existingIncursion, incursionData) {
+        if existingIncursion.Update(incursionData) {
           msgText := fmt.Sprintf("Incursion in %s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
           Info.Printf("Sending state change notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
@@ -130,90 +130,56 @@ func getNewIncursionMsg(newIncursion Incursion) string {
 }
 
 // Polls jabber and processes any commands received
-func pollChat(msgChan chan<- xmpp.Chat, jabber *xmpp.Client) {
+func pollChat(msgChan chan<- xmpp.Chat, jabber *JabberConnection) {
   defer cleanup(msgChan)
   
   for {
-    msg, err := jabber.Recv()
+    msg, err := jabber.GetNextChatMessage()
 
     if err != nil {
       Error.Println("Error encountered receiving message: ", err)
       continue
     }
 
-    chatMsg, ok := msg.(xmpp.Chat)
-    if !ok { continue } // Not a chat message, we don't care about it
-    
-    if len(chatMsg.Text) == 0 || chatMsg.Text[0] != commandPrefix {
+    if msg.Text[0] != commandPrefix {
       //Not a command, ignore
       continue
     }
 
     // Slice off the command prefix
-    function, present := commandsMap.GetFunction(chatMsg.Text[1:])
+    function, present := commandsMap.GetFunction(msg.Text[1:])
     if !present {
-      Warning.Printf("Unknown or unsupported command: %s", chatMsg.Text)
+      Warning.Printf("Unknown or unsupported command: %s", msg.Text)
       continue
     }
 
-    msgChan <- function(chatMsg)
+    msgChan <- function(*msg)
   }
-}
-
-// ------------- COMMANDS --------------------
-
-// Respond with the amount of time the bot's been up
-func getUptime(msg xmpp.Chat) xmpp.Chat {
-  currentUptime := time.Since(startTime).Truncate(time.Second)
-  msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
-
-  Info.Printf("Sending uptime in response to a message from %s", msg.Remote)
-  return createReply(msg, msgText)
-}
-
-func printESIStatus(msg xmpp.Chat) xmpp.Chat {
-  var status string
-  if esi.CheckESI() { status = "GOOD" } else { status = "BAD" }
-  msgText := fmt.Sprintf("Connection to ESI is %s", status)
-  Info.Printf("Sending ESI status in response to a message from %s", msg.Remote)
-  return createReply(msg, msgText)
-}
-
-func listIncursions(msg xmpp.Chat) xmpp.Chat {
-  responseText := "\n"
-
-  incursionsMutex.Lock()
-  for _, incursion := range incursions {
-    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
-    incursion.ToString(),
-    incursion.Influence * 100, // Convert to % for easier reading
-    incursion.State,
-    incursion.Distance)
-  }
-
-  incursionsMutex.Unlock()
-  Info.Printf("Sending current incursions in response to a message from %s", msg.Remote)
-  return createReply(msg, responseText)
 }
 
 func parseFile(fileName string) (*string, *string) {
-  f, err := os.Open(fileName)
+  file, err := os.Open(fileName)
   if err != nil {
-    panic(err)
+    Error.Fatalf("Failed to open file %s, error: %s", fileName, err)
   }
-  defer f.Close()
+  defer file.Close()
 
-  scanner := bufio.NewScanner(f)
+  scanner := bufio.NewScanner(file)
 
-  scanner.Scan()
+  ok := scanner.Scan()
+  if !ok {
+    Error.Fatalf("Failed to get username from file %s", fileName)
+  }
   userName := scanner.Text()
 
-  scanner.Scan()
+  ok = scanner.Scan()
+  if !ok {
+    Error.Fatalf("Failed to get password from file %s", fileName)
+  }
   password := scanner.Text()
   
   return &userName, &password
 }
-
 
 func init() {
   // Create loggers
@@ -232,6 +198,45 @@ func init() {
   esi = ESI.NewClient()
 }
 
+func processLoop(client *JabberConnection) {
+  // Spawn ESI and receive routines
+  Info.Println("Starting routines...")
+  esiChan := make(chan xmpp.Chat)
+  jabberChan := make(chan xmpp.Chat)
+  go pollIncursionsData(esiChan)
+  go pollChat(jabberChan, client)
+
+  // Process message send requests and restart routines
+  currentRetries := maxRetries
+  for currentRetries > 0 {
+    select {
+      case msg, ok := <-esiChan: {
+        if !ok {
+          esiChan = make(chan xmpp.Chat)
+          currentRetries--
+          Warning.Printf("Restarting incursions routine after crash, %d tries remaining", currentRetries)
+          go pollIncursionsData(esiChan)
+        } else {
+          err := client.Send(msg)
+          if err != nil { log.Println(err) }
+        }
+      }
+      
+      case msg, ok := <-jabberChan: {
+        if !ok {
+          jabberChan = make(chan xmpp.Chat)
+          currentRetries--
+          Warning.Printf("Restarting jabber routine after crash, %d tries remaining", currentRetries)
+          go pollChat(jabberChan, client)
+        } else {
+          err := client.Send(msg)
+          if err != nil { log.Println(err) }
+        }
+      }
+    }
+  }
+}
+
 func main() {
   // Parse command line flags
   userName := flag.String("username", "", "Username for Jabber")
@@ -244,59 +249,14 @@ func main() {
     userName, password = parseFile(*userFile)
   }
 
-  // Connect XMPP client
-  Info.Println("Creating client...")
-  // goonfleet dot com promotes a connection to TLS later, the connection needs to start unencrypted
-  // If the client attempts to initiate TLS, things break
-  client, err := xmpp.NewClientNoTLS(jabberServer, *userName, *password, false)
+  if *userName == "" || *password == "" || *jabberChannel == "" {
+    Error.Fatalln("One or more required parameters was missing")
+  }
 
+  client, err := CreateNewJabberConnection(jabberServer, *jabberChannel, *userName, *password)
   if err != nil {
-    Error.Fatalln("Failed to init client", err)
+    Error.Fatalln("Failed initial connection to the server: ", err)
   }
 
-  mucJID := fmt.Sprintf("%s@%s", *jabberChannel, jabberServer)
-  Info.Printf("Joining %s", mucJID)
-  _, err = client.JoinMUCNoHistory(mucJID, botNick)
-
-  if err != nil { Error.Println("Failed to join MUC", err) }
-
-  // Spawn ESI and receive routines
-  Info.Println("Client created, starting routines...")
-  esiChan := make(chan xmpp.Chat)
-  jabberChan := make(chan xmpp.Chat)
-  go pollIncursionsData(esiChan)
-  go pollChat(jabberChan, client)
-  // Process message send requests and restart routines
-  currentRetries := maxRetries
-  for currentRetries > 0 {
-    select {
-      case msg, ok := <-esiChan: {
-        if !ok {
-          esiChan = make(chan xmpp.Chat)
-          currentRetries--
-          Warning.Printf("Restarting incursions routine after crash, %d tries remaining", currentRetries)
-          go pollIncursionsData(esiChan)
-        } else {
-          _, err := client.Send(msg)
-
-          if err != nil { log.Println(err) }
-        }
-      }
-      
-      case msg, ok := <-jabberChan: {
-        if !ok {
-          jabberChan = make(chan xmpp.Chat)
-          currentRetries--
-          Warning.Printf("Restarting jabber routine after crash, %d tries remaining", currentRetries)
-          go pollChat(jabberChan, client)
-        } else {
-          _, err := client.Send(msg)
-
-          if err != nil { log.Println(err) }
-        }
-      }
-    }
-  }
-
-  Error.Fatalln("Max retries reached, shutting down...")
+  processLoop(&client)
 }

@@ -50,20 +50,19 @@ type IncursionDataFetcher interface {
 }
 
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
-func UpdateIncursion(incursion *Incursion, newData ESI.IncursionResponse) bool {
+func (incursion *Incursion) Update(newData ESI.IncursionResponse) bool {
   if incursion == nil {
     return false
   }
   
-  updated := false
+  incursion.Influence = newData.Influence
 
   if incursion.State != newData.State {
     incursion.State = newData.State
-    updated = true
+    return true
   }
 
-  incursion.Influence = newData.Influence
-  return updated
+  return false
 }
 
 // Creates a new Incursion object from ESI data
