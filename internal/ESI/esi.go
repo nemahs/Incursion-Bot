@@ -81,8 +81,9 @@ func (c *ESIClient) cachedCall(req *http.Request, cache *CacheEntry, resultStruc
     result.Elem().Set(cache.Data)
     cache.ExpirationTime, err = parseExpirationTime(resp)
     return err
-  case http.StatusServiceUnavailable, http.StatusInternalServerError, http.StatusGatewayTimeout:
+  case http.StatusServiceUnavailable, http.StatusInternalServerError, http.StatusGatewayTimeout, http.StatusBadGateway:
     log.Println("ESI is having problems, returning cached data instead")
+    log.Printf("Got status code: %d", resp.StatusCode)
     if !cache.Data.IsValid() {
       return fmt.Errorf("cache was empty")
     }

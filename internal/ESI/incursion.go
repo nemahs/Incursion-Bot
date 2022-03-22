@@ -17,7 +17,7 @@ var incursionsCache CacheEntry
 
 func (c *ESIClient) GetIncursions() ([]IncursionResponse, time.Time, error) {
 	var result []IncursionResponse
-	req, err := http.NewRequest("GET", c.baseURL+"/incursions/", nil)
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/incursions/", nil)
 	if err != nil {
 		errorLog.Println("Failed to create request for incursions", err)
 		return result, incursionsCache.ExpirationTime, err

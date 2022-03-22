@@ -45,7 +45,7 @@ func (c *ESIClient) GetNames(ids []int) (NameMap, error) {
 		return result, err
 	}
 
-	req, err := http.NewRequest("POST", c.baseURL+"/universe/names/", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/universe/names/", bytes.NewBuffer(data))
 	if err != nil {
 		errorLog.Println("Failed to create name request", req)
 		return result, err
@@ -91,7 +91,7 @@ var constDataCache CacheMap = make(CacheMap)
 func (c *ESIClient) GetConstInfo(constID int) (ConstellationData, error) {
 	var response ConstellationData
 	url := fmt.Sprintf("%s/universe/constellations/%d/", c.baseURL, constID)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		errorLog.Printf("Failed to create constellation info request for id: %d", constID)
 		return response, err
@@ -121,7 +121,7 @@ var systemCache CacheMap = make(CacheMap)
 func (c *ESIClient) GetSystemInfo(systemID int) (SystemData, error) {
 	var results SystemData
 	url := fmt.Sprintf("%s/universe/systems/%d/", c.baseURL, systemID)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		errorLog.Println("An error occurred creating the system info request", err)
 		return results, err

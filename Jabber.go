@@ -16,6 +16,8 @@ type JabberConnection struct {
 	client *xmpp.Client
 }
 
+const retryDuration = time.Minute // Time to wait between reconnect attempts
+
 // Create a new jabber connection
 func CreateNewJabberConnection(server string, channel string, username string, password string) (JabberConnection, error) {
 	newServer := JabberConnection {
@@ -49,7 +51,7 @@ func (conn *JabberConnection) ConnectToChannel() error {
 func (comm *JabberConnection) reconnectLoop() {
 	for ok := true; ok; {
 		comm.client.Close()
-		time.Sleep(time.Minute)
+		time.Sleep(retryDuration)
 		err := comm.ConnectToChannel()
 
 		ok = (err == nil)
