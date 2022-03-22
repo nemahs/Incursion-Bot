@@ -6,10 +6,6 @@ type IDList []int
 
 // Check if a slice contains the speicifed value
 func (list IDList) contains(val int) bool {
-	return contains(val, list)
-}
-
-func contains[T comparable](val T, list []T) bool {
 	for _, v := range list {
 		if v == val {
 			return true
