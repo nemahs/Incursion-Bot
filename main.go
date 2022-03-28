@@ -26,13 +26,31 @@ const jabberServer string = "conference.goonfleet.com"  // Jabber server to conn
 const homeSystem int = 30004759                         // 1DQ1-A
 const botNick string = "IncursionBot"                   // Bot will connect to jabber using this nickname
 const commandPrefix byte = '!'                          // All commands must start with this prefix
+const timeFormat string = "Mon _2 Jan 15:04"
 
 var commandsMap CommandMap     // Map if all supported commands, their functions, and their help messages
-var incursions IncursionList   // List of currently tracked incursions
-var incursionsMutex sync.Mutex // Synchronize access to the incursionsList
 var jabberChannel *string      // Jabber channel to broadcast to
 var esi ESI.ESIClient          // ESI client
 var startTime time.Time        // Time the bot was started
+
+type SyncIncursionList struct {
+  list IncursionList
+  mutex sync.Mutex
+}
+
+func (list *SyncIncursionList) Get() IncursionList {
+  list.mutex.Lock()
+  defer list.mutex.Unlock()
+  return list.list
+}
+
+func (list *SyncIncursionList) Set(newList IncursionList) {
+  list.mutex.Lock()
+  list.list = newList
+  list.mutex.Unlock()
+}
+
+var testIncursions SyncIncursionList
 
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
@@ -46,6 +64,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
   firstRun := true
   
   for {
+    incursions := testIncursions.Get()
     var newIncursionList IncursionList // List of incursions we've seen in this loop
 
     incursionResponses, nextPollTime, err := esi.GetIncursions()
@@ -94,7 +113,7 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
         // Update data and check if anything changed
         Info.Printf("Found existing incursion in %s to update", existingIncursion.ToString())
         if existingIncursion.Update(incursionData) {
-          msgText := fmt.Sprintf("Incursion in %s changed state to %s", existingIncursion.ToString(), existingIncursion.State)
+          msgText := fmt.Sprintf("Incursion in %s changed state to %s\nDespawns at %s EVE", existingIncursion.ToString(), existingIncursion.State, existingIncursion.TimeLeftString())
           Info.Printf("Sending state change notification to %s", *jabberChannel)
           msgChan <- newGroupMessage(*jabberChannel, msgText)
         }
@@ -106,15 +125,16 @@ func pollIncursionsData(msgChan chan<- xmpp.Chat) {
     // Check if any incursions have despawned and report
     for _, existing := range incursions {
       if newIncursionList.find(existing.StagingSystem.ID) == nil {
-        msgText := fmt.Sprintf("Incursion in %s despawned", existing.ToString())
+        windowStart := time.Now().Add(12 * time.Hour).UTC()
+        windowEnd := time.Now().Add(36 * time.Hour).UTC()
+
+        msgText := fmt.Sprintf("Incursion in %s despawned\nRespawn window: %s - %s EVE", existing.ToString(), windowStart.Format(timeFormat), windowEnd.Format(timeFormat))
         Info.Printf("Sending despawn notification to %s for %s", *jabberChannel, existing.ToString())
         msgChan <- newGroupMessage(*jabberChannel, msgText)
       }
     }
 
-    incursionsMutex.Lock()
-    incursions = newIncursionList
-    incursionsMutex.Unlock()
+    testIncursions.Set(newIncursionList)
     
     firstRun = false
     time.Sleep(time.Until(nextPollTime))

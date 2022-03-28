@@ -26,17 +26,25 @@ func printESIStatus(msg xmpp.Chat) xmpp.Chat {
 
 func listIncursions(msg xmpp.Chat) xmpp.Chat {
   responseText := "\n"
+  incursions := testIncursions.Get()
 
-  incursionsMutex.Lock()
   for _, incursion := range incursions {
-    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
+    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps, Despawn: %s \n",
     incursion.ToString(),
     incursion.Influence * 100, // Convert to % for easier reading
     incursion.State,
-    incursion.Distance)
+    incursion.Distance,
+    incursion.TimeLeftString())
   }
 
-  incursionsMutex.Unlock()
   Info.Printf("Sending current incursions in response to a message from %s", msg.Remote)
   return createReply(msg, responseText)
+}
+
+func nextSpawn(msg xmpp.Chat) xmpp.Chat {
+  reponseText := ""
+
+  // TODO: Need to track incursions that have despawned and when they despawned
+
+  return createReply(msg, reponseText)
 }
