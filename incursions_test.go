@@ -21,7 +21,6 @@ func (c FailIncursionData) GetSystemInfo(int) (ESI.SystemData, error) {
 		ID: 1234,
 		Name: "TestSystem",
 		SecStatus: -1.0,
-		SecurityClass: ESI.LowSec,
 	}, nil
 }
 

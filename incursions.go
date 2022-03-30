@@ -1,10 +1,27 @@
 package main
 
 import (
-	"IncursionBot/internal/ESI"
 	"fmt"
 	"time"
 )
+
+type SecurityClass string
+
+const (
+  HighSec SecurityClass = "High"
+  LowSec  SecurityClass = "Low"
+  NullSec SecurityClass = "Null"
+)
+
+func guessSecClass(status float64) SecurityClass {
+  if status > .5 {
+    return HighSec
+  } else if (status > .1) {
+    return LowSec
+  }
+  return NullSec
+}
+
 
 // TODO: Figure out what to do with this enum
 type IncursionState string
@@ -26,7 +43,7 @@ type Incursion struct {
   Influence     float64           // Influence of the incursion from 0 to 1 inclusive
   Region        NamedItem         // Region the incursion is in
   State         string            // Current state of the incursion
-  Security      ESI.SecurityClass // Security type of the staging system
+  Security      SecurityClass     // Security type of the staging system
   SecStatus     float64           // Security status of the staging system, -1 to 1 inclusive
   Distance      int               // Distance from home system
   StateChanged  time.Time        // Time the state changed to this current state
@@ -37,7 +54,7 @@ func (inc *Incursion) ToString() string {
 }
 
 func (inc *Incursion) TimeLeftInSpawn() (time.Time, error) {
-  Info.Printf("Stage changed: %s", inc.StateChanged)
+  logger.Infof("Stage changed: %s", inc.StateChanged)
 
   switch inc.State {
   case string(Established):
@@ -57,7 +74,7 @@ func (inc *Incursion) TimeLeftString() string {
   }
 
   despawn, _ := inc.TimeLeftInSpawn()
-  Info.Printf("Despawn result: %s", despawn)
+  logger.Infof("Despawn result: %s", despawn)
   if (inc.State == string(Established)) {
     return fmt.Sprintf("NLT %s", despawn.UTC().Format(timeFormat))
   }
@@ -66,71 +83,21 @@ func (inc *Incursion) TimeLeftString() string {
 }
 
 type IncursionList []Incursion
-func (list *IncursionList) find(stagingId int) *Incursion {
+func (list *IncursionList) find(inc Incursion) *Incursion {
   for _, incursion := range *list {
-    if incursion.StagingSystem.ID == stagingId { return &incursion }
+    if incursion.StagingSystem.ID == inc.StagingSystem.ID { return &incursion }
   }
   return nil
 }
 
-type IncursionDataFetcher interface {
-  GetSystemInfo(int) (ESI.SystemData, error)
-  GetConstInfo(int) (ESI.ConstellationData, error)
-  GetNames([]int) (ESI.NameMap, error)
-  GetRouteLength(int, int) (int, error)
-}
-
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
-func (incursion *Incursion) Update(newData ESI.IncursionResponse) bool {
-  if incursion == nil {
-    return false
-  }
-  
-  incursion.Influence = newData.Influence
+func (incursion *Incursion) Update(influence float64, state string) bool {
+  incursion.Influence = influence
 
-  if incursion.State != newData.State {
-    incursion.State = newData.State
-    t := time.Now()
-    incursion.StateChanged = t
+  if incursion.State != state {
+    incursion.State = state
     return true
   }
 
   return false
-}
-
-// Creates a new Incursion object from ESI data
-func CreateNewIncursion(incursion ESI.IncursionResponse, esi IncursionDataFetcher) (Incursion, error) {
-  stagingData, err := esi.GetSystemInfo(incursion.StagingID)
-  if err != nil {
-    return Incursion{}, err
-  }
-  
-  constData, err := esi.GetConstInfo(incursion.ConstellationID)
-  if err != nil {
-    return Incursion{}, err
-  }
-  
-  names, err := esi.GetNames([]int{constData.RegionID})  
-  if err != nil {
-    return Incursion{}, err
-  }
-  
-  distance, err := esi.GetRouteLength(homeSystem, incursion.StagingID)
-  if err != nil {
-    return Incursion{}, err
-  }
-  
-
-  newIncursion := Incursion{
-    Constellation: NamedItem{ID: constData.ID, Name: constData.Name},
-    StagingSystem: NamedItem{ID: stagingData.ID, Name: stagingData.Name},
-    Influence: incursion.Influence,
-    Region: NamedItem{ID: constData.RegionID, Name: names[constData.RegionID]},
-    State: incursion.State,
-    SecStatus: stagingData.SecStatus,
-    Security: stagingData.SecurityClass,
-    Distance: distance,
-  }
-
-  return newIncursion, nil
 }

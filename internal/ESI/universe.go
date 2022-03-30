@@ -113,7 +113,6 @@ type SystemData struct {
 	ID            int           `json:"system_id"`
 	Name          string        `json:"name"`
 	SecStatus     float64       `json:"security_status"`
-	SecurityClass SecurityClass // Not part of the response
 }
 
 var systemCache CacheMap = make(CacheMap)
@@ -133,7 +132,6 @@ func (c *ESIClient) GetSystemInfo(systemID int) (SystemData, error) {
 		errorLog.Println("An error occurred getting system info", err)
 		return results, err
 	}
-	results.SecurityClass = guessSecClass(results.SecStatus)
 
 	return results, nil
 }
@@ -157,21 +155,4 @@ func (c *ESIClient) GetRouteLength(startSystem int, endSystem int) (int, error) 
   }
 
   return len(resultData) - 1, nil // Subtract off the start and end systems
-}
-
-type SecurityClass string
-
-const (
-  HighSec SecurityClass = "High"
-  LowSec  SecurityClass = "Low"
-  NullSec SecurityClass = "Null"
-)
-
-func guessSecClass(status float64) SecurityClass {
-  if status > .5 {
-    return HighSec
-  } else if (status > .1) {
-    return LowSec
-  }
-  return NullSec
 }
