@@ -1,13 +1,12 @@
 package main
 
 import (
-  "fmt"
-
-  "github.com/mattn/go-xmpp"
+	Chat "IncursionBot/internal/ChatClient"
+	"fmt"
 )
 
 // Takes in a message from chat and returns the appropriate response message
-type commandFunc func(xmpp.Chat) xmpp.Chat
+type commandFunc func(Chat.ChatMsg) string
 
 // Map of supported commands and their functions
 type CommandMap struct {
@@ -27,21 +26,14 @@ func NewCommandMap() CommandMap {
 }
 
 // Default command to send all the supported commands in the map
-func (m *CommandMap) HelpText(msg xmpp.Chat) xmpp.Chat {
-  response := xmpp.Chat {
-    Remote: parseMuc(msg.Remote, jabberServer),
-    Type: msg.Type,
-  }
-
+func (m *CommandMap) HelpText(msg Chat.ChatMsg) string {
   responseText := "Commands: \n"
 
   for command, help := range m.helpMap {
     responseText += fmt.Sprintf("%c%s  -  %s\n", commandPrefix, command, help)
   }
 
-  response.Text = responseText
-
-  return response
+  return responseText
 }
 
 func (m *CommandMap) AddCommand(commandName string, function commandFunc, helpText string) {
