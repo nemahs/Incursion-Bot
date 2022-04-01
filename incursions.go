@@ -18,7 +18,7 @@ func guessSecClass(status float64) SecurityClass {
 
   if roundedSecStatus >= .5 {
     return HighSec
-  } else if (status >= .1) {
+  } else if (roundedSecStatus >= .1) {
     return LowSec
   }
   return NullSec
