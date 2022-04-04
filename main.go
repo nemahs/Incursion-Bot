@@ -9,41 +9,17 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync"
 	"time"
 )
 
-// TODO: Estimate time left in spawn
-
-const maxRetries int = 10
 const homeSystem int = 30004759                         // 1DQ1-A
 const commandPrefix byte = '!'                          // All commands must start with this prefix
 const timeFormat string = "Mon _2 Jan 15:04"
 
-var commandsMap CommandMap     // Map of all supported commands, their functions, and their help messages
-var logger logging.Logger = logging.NewLogger()
-var startTime time.Time        // Time the bot was started
-var incManager IncursionManager
-
-type SyncIncursionList struct {
-  list IncursionList
-  mutex sync.Mutex
-}
-
-func (list *SyncIncursionList) Get() IncursionList {
-  list.mutex.Lock()
-  defer list.mutex.Unlock()
-  return list.list
-}
-
-func (list *SyncIncursionList) Set(newList IncursionList) {
-  list.mutex.Lock()
-  list.list = newList
-  list.mutex.Unlock()
-}
-
-var testIncursions SyncIncursionList
-
+var commandsMap CommandMap      // Map of all supported commands, their functions, and their help messages
+var logger logging.Logger       // Logger for the main application
+var startTime time.Time         // Time the bot was started
+var incManager IncursionManager // Manages known incursions and informs on state changes
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
 func getHomeRegions() IDList {
@@ -78,6 +54,7 @@ func mainLoop() {
   }
 }
 
+// Creates a notification message for a new incursion, creating a special message if the incursion is in a home region
 func getNewIncursionMsg(newIncursion Incursion) string {
 	if getHomeRegions().contains(newIncursion.Region.ID) {
 		return fmt.Sprintf(":siren: New incursion detected in a home region! %s - %d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
@@ -112,6 +89,7 @@ func pollChat(jabber Chat.ChatServer) {
   }
 }
 
+// Parse a given file for a username and password. Expects the first line to be the username, and the second to be the password
 func parseFile(fileName string) (*string, *string) {
   file, err := os.Open(fileName)
   if err != nil {
@@ -144,6 +122,7 @@ func init() {
   commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
   commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
   commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
+  commandsMap.AddCommand("nextspawn", nextSpawn, "Lists the start of the next spawn window for null and low incursions")
 }
 
 func main() {
@@ -151,11 +130,14 @@ func main() {
   userName := flag.String("username", "", "Username for Jabber")
   password := flag.String("password", "", "Password for Jabber")
   userFile := flag.String("file", "", "File containing jabber username and password, line separated")
+  debug := flag.Bool("debug", false, "Enables additional logging")
 
   jabberServer := flag.String("server", "conference.goonfleet.com", "Jabber server to connect to")
   jabberChannel := flag.String("chat", "testbot", "MUC to join on start")
   botNick := flag.String("nickname", "IncursionBot", "Name bot will connect to MUC with")
   flag.Parse()
+
+  logger = logging.NewLogger(*debug)
 
   if *userFile != "" {
     userName, password = parseFile(*userFile)
@@ -182,9 +164,11 @@ func main() {
       client.BroadcastToDefaultChannel(msgText)
     },
     onIncursionDespawn: func(i Incursion) {
-      windowStart := time.Now().Add(12 * time.Hour).UTC()
-      windowEnd := time.Now().Add(36 * time.Hour).UTC()
-      msgText := fmt.Sprintf("Incursion in %s despawned,\nRespawn: %s-%s", i.ToString(), windowStart, windowEnd)
+      windowStart := time.Now().Add(respawnWindowStart).UTC()
+      windowEnd := time.Now().Add(respawnWindowEnd).UTC()
+      msgText := fmt.Sprintf("Incursion in %s despawned,\nRespawn: %s-%s", i.ToString(), 
+        windowStart.Format(timeFormat),
+        windowEnd.Format(timeFormat))
       logger.Infof("Sending despawn notification for %s", i.ToString())
       client.BroadcastToDefaultChannel(msgText)
     },

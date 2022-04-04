@@ -20,7 +20,7 @@ type JabberConnection struct {
 	client *xmpp.Client
 }
 
-var logger = logging.NewLogger()
+var logger = logging.NewLogger(false)
 
 const retryDuration = time.Minute // Time to wait between reconnect attempts
 
@@ -62,6 +62,10 @@ func (comm *JabberConnection) reconnectLoop() {
 		comm.client.Close()
 		time.Sleep(retryDuration)
 		err := comm.ConnectToChannel()
+
+		if err != nil {
+			logger.Errorln("Failed to reconnect, waiting 1 min then trying again", err)
+		}
 
 		ok = (err == nil)
 	}

@@ -25,7 +25,7 @@ func printESIStatus(msg Chat.ChatMsg) string {
 
 func listIncursions(msg Chat.ChatMsg) string {
   responseText := "\n"
-  incursions := testIncursions.Get()
+  incursions := incManager.GetIncursions()
 
   for _, incursion := range incursions {
     responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps, Despawn: %s \n",
@@ -41,9 +41,6 @@ func listIncursions(msg Chat.ChatMsg) string {
 }
 
 func nextSpawn(msg Chat.ChatMsg) string {
-  responseText := ""
-
-  // TODO: Need to track incursions that have despawned and when they despawned
-
-  return responseText
+  logger.Infof("Sending next spawn times in response to a message from %s", msg.Sender)
+  return incManager.NextSpawns()
 }

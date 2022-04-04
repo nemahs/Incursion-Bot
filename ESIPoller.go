@@ -44,7 +44,7 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 		Constellation: NamedItem{ID: incursion.ConstellationID},
 		StagingSystem: NamedItem{ID: incursion.StagingID},
 		Influence: incursion.Influence,
-		State: incursion.State,
+		State: parseState(incursion.State),
 	}
 
 	distanceChan := make(chan int)
