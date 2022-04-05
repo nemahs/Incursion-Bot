@@ -78,6 +78,7 @@ type Incursion struct {
   SecStatus     float64           // Security status of the staging system, -1 to 1 inclusive
   Distance      int               // Distance from home system
   StateChanged  time.Time        // Time the state changed to this current state
+  IsValid       bool
 }
 
 func (inc *Incursion) ToString() string {
