@@ -45,6 +45,7 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 		StagingSystem: NamedItem{ID: incursion.StagingID},
 		Influence: incursion.Influence,
 		State: incursion.State,
+		IsValid: false,
 	}
 
 	distanceChan := make(chan int)
@@ -79,5 +80,6 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 
 	newIncursion.Region.Name = names[constData.RegionID]
   
+	newIncursion.IsValid = true
 	return newIncursion
 }

@@ -51,8 +51,12 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 		existingIncursion := manager.incursions.find(incursion)
 
 		if existingIncursion == nil {
-			logger.Infof("Found new incursion in %s", incursion.ToString())
+			if !incursion.IsValid {
+				logger.Errorf("Received an invalid incursion located in %d, discarding...", incursion.StagingSystem.ID)
+				continue
+			}
 
+			logger.Infof("Found new incursion in %s", incursion.ToString())
 			manager.onNewIncursion(incursion)
 		} else {
 			logger.Infof("Found existing incursion in %s to update", existingIncursion.ToString())

@@ -56,6 +56,7 @@ type Incursion struct {
   Security      SecurityClass     // Security type of the staging system
   SecStatus     float64           // Security status of the staging system, -1 to 1 inclusive
   Distance      int               // Distance from home system
+  IsValid       bool
 }
 
 func (inc *Incursion) ToString() string {
