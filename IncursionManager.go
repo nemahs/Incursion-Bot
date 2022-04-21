@@ -1,26 +1,33 @@
 package main
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+	"time"
+)
 
 type NotifFunction func(Incursion)
 
-// TODO: Manage respawn intervals
 type IncursionManager struct {
 	incursionMut sync.Mutex
 	incursions   IncursionList
+	nullTracker, lowTracker IncursionTimeTracker
 
 	onNewIncursion     NotifFunction
 	onIncursionUpdate  NotifFunction
 	onIncursionDespawn NotifFunction
 }
 
-const nullSecSpawns int = 3
-const lowSecSpawns int = 1
-
 func (manager *IncursionManager) GetIncursions() IncursionList {
 	manager.incursionMut.Lock()
 	defer manager.incursionMut.Unlock()
 	return manager.incursions
+}
+
+func (manager *IncursionManager) NextSpawns() string {
+	return fmt.Sprintf("\nNext nullsec spawn window: %s\nNext lowsec spawn window: %s", 
+	  manager.nullTracker.nextRespawn(), 
+		manager.lowTracker.nextRespawn())
 }
 
 func (manager *IncursionManager) PopulateIncursions(initialList IncursionList) {
@@ -42,6 +49,7 @@ func (manager *IncursionManager) PopulateIncursions(initialList IncursionList) {
 
 func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) {
 	var toSave IncursionList
+	logger.Infoln("------Processing new set of incursions-----")
 
 	for _, incursion := range newIncursions {
 		if (incursion.Security == HighSec) {
@@ -55,23 +63,44 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 				logger.Errorf("Received an invalid incursion located in %d, discarding...", incursion.StagingSystem.ID)
 				continue
 			}
+			incursion.StateChanged = time.Now()
 
-			logger.Infof("Found new incursion in %s", incursion.ToString())
+			if incursion.Security == NullSec {
+				manager.nullTracker.Spawn(incursion)
+			} else {
+				manager.lowTracker.Spawn(incursion)
+			}
+
 			manager.onNewIncursion(incursion)
+			toSave = append(toSave, incursion)
 		} else {
 			logger.Infof("Found existing incursion in %s to update", existingIncursion.ToString())
 			if existingIncursion.Update(incursion.Influence, incursion.State) {
-				manager.onIncursionUpdate(incursion)
-			}
-		}
+				existingIncursion.StateChanged = time.Now()
 
-		toSave = append(toSave, incursion)
+				if incursion.Security == NullSec {
+					manager.nullTracker.Update(*existingIncursion)
+				} else {
+					manager.lowTracker.Update(*existingIncursion)
+				}
+
+				manager.onIncursionUpdate(*existingIncursion)
+			}
+
+			toSave = append(toSave, *existingIncursion)
+		}
 	}
 
 	// Check for despawns
 	for _, existingIncursion := range manager.incursions {
 		if newIncursions.find(existingIncursion) == nil {
 			logger.Infof("Incursion in %s despawned", existingIncursion.ToString())
+			if existingIncursion.Security == NullSec {
+				manager.nullTracker.Despawn(existingIncursion)
+			} else {
+				manager.lowTracker.Despawn(existingIncursion)
+			}
+
 			manager.onIncursionDespawn(existingIncursion)
 		}
 	}

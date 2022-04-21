@@ -25,15 +25,22 @@ func printESIStatus(msg Chat.ChatMsg) string {
 
 func listIncursions(msg Chat.ChatMsg) string {
   responseText := "\n"
+  incursions := incManager.GetIncursions()
 
-  for _, incursion := range incManager.GetIncursions() {
-    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps \n",
+  for _, incursion := range incursions {
+    responseText += fmt.Sprintf("%s - Influence: %.2f%% - Status: %s - %d jumps, Despawn: %s \n",
     incursion.ToString(),
     incursion.Influence * 100, // Convert to % for easier reading
     incursion.State,
-    incursion.Distance)
+    incursion.Distance,
+    incursion.TimeLeftString())
   }
 
   logger.Infof("Sending current incursions in response to a message from %s", msg.Sender)
   return responseText
+}
+
+func nextSpawn(msg Chat.ChatMsg) string {
+  logger.Infof("Sending next spawn times in response to a message from %s", msg.Sender)
+  return incManager.NextSpawns()
 }
