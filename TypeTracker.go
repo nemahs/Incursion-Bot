@@ -19,8 +19,14 @@ func respawnTime(incursion Incursion) time.Time {
 	case Respawning:
 		return incursion.StateChanged.Add(respawnWindowStart)
 	case Established, Mobilizing, Withdrawing:
-		lifeTime, _ := incursion.TimeLeftInSpawn()
+		lifeTime, err := incursion.TimeLeftInSpawn()
+		if err != nil {
+			logger.Errorln("Error getting time left in spawn", err)
+			return time.Time{}
+		}
 		return lifeTime.Add(respawnWindowStart)
+	default:
+		logger.Warningf("Unknown incursion state %s", incursion.State)
 	}
 
 	return time.Time{}
@@ -31,50 +37,42 @@ func formatDuration(duration time.Duration) string {
 	var result string
 
 	if duration > day {
-		result += fmt.Sprint(duration.Truncate(day), "d")
+		result += fmt.Sprintf("%dd", int(duration.Hours() / 24))
 		duration = duration % day
 	}
 
-	result += duration.String()
+	result += fmt.Sprintf("%dh", int(duration.Hours()))
+	duration = duration % time.Hour
 
+	result += fmt.Sprintf("%dm", int(duration.Minutes()))
 	return result
 }
 
 func (tracker *IncursionTimeTracker) Despawn(incursion Incursion) {
-	toRemove := -1
-	for i, curIncursion := range tracker.currentIncursions {
-		if curIncursion.StagingSystem == incursion.StagingSystem {
-			toRemove = i
-			break
-		}
-	}
-
-	if toRemove > -1 {
-		tracker.currentIncursions = append(tracker.currentIncursions[:toRemove], tracker.currentIncursions[toRemove+1:]...)
-	}
+	tracker.currentIncursions.RemoveFunc(incursion.Equal)
 
 	incursion.State = Respawning
 	incursion.StateChanged = time.Now()
 	tracker.respawningIncursions = append(tracker.respawningIncursions, incursion)
-	logger.Debugln("Added respawning incursion")
+	logger.Debugf("Added respawning incursion from %s", incursion.ToString())
 }
 
 func (tracker *IncursionTimeTracker) Spawn(incursion Incursion) {
 	tracker.currentIncursions = append(tracker.currentIncursions, incursion)
 
-	if len(tracker.respawningIncursions) > 0 {
+	if !tracker.respawningIncursions.Empty() {
 		var toRemove int = -1
 		for i, incursion := range tracker.respawningIncursions {
-			if incursion.StateChanged.Before(tracker.respawningIncursions[i].StateChanged) {
+			if incursion.StateChanged.Before(tracker.respawningIncursions[toRemove].StateChanged) {
 				toRemove = i
 			}
 		}
 
-		tracker.respawningIncursions = append(tracker.respawningIncursions[:toRemove], tracker.respawningIncursions[toRemove+1:]...)
+		if toRemove > -1 { tracker.respawningIncursions.Remove(toRemove) }
 		logger.Debugln("Removed respawning incursion")
 	}
 
-	logger.Debugln("Tracking new incursion")
+	logger.Debugf("Tracking new incursion in %s", incursion.ToString())
 }
 
 func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
@@ -85,7 +83,7 @@ func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
 		logger.Debugln("Updated incursion")
 	} else {
 		tracker.currentIncursions = append(tracker.currentIncursions, incursion)
-		logger.Debugln("Found an update for an incursion we weren't tracking, adding to list")
+		logger.Debugf("Found an update for an incursion we weren't tracking in %s, adding to list", incursion.ToString())
 	}
 }
 
@@ -104,10 +102,14 @@ func (tracker *IncursionTimeTracker) nextRespawn() string {
 		}
 	}
 
+	if nextRespawnTime.IsZero() {
+		return "Unknown"
+	}
+
 	logger.Infof("Picked %s as next to respawn, respawn time %s", nextToRespawn.StagingSystem.Name, nextRespawnTime)
 	switch nextToRespawn.State {
 	case Established:
-		return fmt.Sprintf("No later than %s", formatDuration(time.Until(nextRespawnTime)))
+		return fmt.Sprintf("No more than %s", formatDuration(time.Until(nextRespawnTime)))
 	case Respawning:
 		if time.Now().After(nextRespawnTime) {
 			endOfSpawn := nextToRespawn.StateChanged.Add(respawnWindowEnd)
@@ -115,9 +117,6 @@ func (tracker *IncursionTimeTracker) nextRespawn() string {
 		}
 		fallthrough // Not yet in a spawn window, return the normal string format
 	default:
-		if nextRespawnTime.IsZero() {
-			return "Unknown"
-		}
 		return formatDuration(time.Until(nextRespawnTime))
 	}
 }

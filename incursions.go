@@ -36,7 +36,7 @@ func ccp_round(status float64) float64 {
 
 const mobilizingLifetime time.Duration = time.Hour * 72
 const withdrawingLifetime time.Duration = time.Hour * 24
-const establishedMaxLife time.Duration = time.Hour * 24 * 7
+const establishedMaxLife time.Duration = time.Hour * 24 * 8
 
 type IncursionState string
 
@@ -81,6 +81,10 @@ type Incursion struct {
   IsValid       bool
 }
 
+func (inc *Incursion) Equal(other Incursion) bool {
+  return inc.StagingSystem.ID == other.StagingSystem.ID
+}
+
 func (inc *Incursion) ToString() string {
   return fmt.Sprintf("%s {%.2f} (%s - %s)", inc.StagingSystem.Name, inc.SecStatus, inc.Constellation.Name, inc.Region.Name)
 }
@@ -107,7 +111,7 @@ func (inc *Incursion) TimeLeftString() string {
 
   despawn, err := inc.TimeLeftInSpawn()
   if err != nil {
-    logger.Errorf("Error occurred getting time left in spawn %s: %w", inc.StagingSystem.Name, err)
+    logger.Errorf("Error occurred getting time left in spawn %s: %s", inc.StagingSystem.Name, err)
     return "Unknown"
   }
 
@@ -119,13 +123,6 @@ func (inc *Incursion) TimeLeftString() string {
   return fmt.Sprintf("%s", despawn.UTC().Format(timeFormat))
 }
 
-type IncursionList []Incursion
-func (list *IncursionList) find(inc Incursion) *Incursion {
-  for _, incursion := range *list {
-    if incursion.StagingSystem.ID == inc.StagingSystem.ID { return &incursion }
-  }
-  return nil
-}
 
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.
 func (incursion *Incursion) Update(influence float64, state IncursionState) bool {

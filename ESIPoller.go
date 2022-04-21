@@ -45,6 +45,7 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 		StagingSystem: NamedItem{ID: incursion.StagingID},
 		Influence: incursion.Influence,
 		State: parseState(incursion.State),
+		StateChanged: time.Time{},
 		IsValid: false,
 	}
 

@@ -164,11 +164,7 @@ func main() {
       client.BroadcastToDefaultChannel(msgText)
     },
     onIncursionDespawn: func(i Incursion) {
-      windowStart := time.Now().Add(respawnWindowStart).UTC()
-      windowEnd := time.Now().Add(respawnWindowEnd).UTC()
-      msgText := fmt.Sprintf("Incursion in %s despawned,\nRespawn: %s-%s", i.ToString(), 
-        windowStart.Format(timeFormat),
-        windowEnd.Format(timeFormat))
+      msgText := fmt.Sprintf("Incursion in %s despawned", i.ToString())
       logger.Infof("Sending despawn notification for %s", i.ToString())
       client.BroadcastToDefaultChannel(msgText)
     },

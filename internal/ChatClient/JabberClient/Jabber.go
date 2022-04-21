@@ -20,7 +20,7 @@ type JabberConnection struct {
 	client *xmpp.Client
 }
 
-var logger = logging.NewLogger(false)
+var logger = logging.NewLogger(false) // TODO: Allow enabling of debug messages 
 
 const retryDuration = time.Minute // Time to wait between reconnect attempts
 
@@ -65,9 +65,10 @@ func (comm *JabberConnection) reconnectLoop() {
 
 		if err != nil {
 			logger.Errorln("Failed to reconnect, waiting 1 min then trying again", err)
+		} else {
+			return
 		}
 
-		ok = (err == nil)
 	}
 }
 
@@ -77,7 +78,7 @@ func (comm *JabberConnection) GetNextChatMessage() (Chat.ChatMsg, error) {
 		msg, err := comm.client.Recv()
 
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				logger.Warningln("Connection to server is broken, attempting to reconnect")
 				comm.reconnectLoop()
 				continue

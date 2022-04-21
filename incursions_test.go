@@ -12,14 +12,14 @@ func TestUpdateIncursion(t *testing.T) {
 	var testIncursion Incursion
 
 
-	testIncursion.State = string(Established)
+	testIncursion.State = Established
 	testIncursion.Influence = 0
 
-	res := testIncursion.Update(.5, string(Established))
+	res := testIncursion.Update(.5, Established)
 	assert.False(t, res)
 	assert.Equal(t, .5, testIncursion.Influence)
 
-	res = testIncursion.Update(.5, string(Mobilizing))
+	res = testIncursion.Update(.5, Mobilizing)
 	assert.True(t, res)
 	assert.Equal(t, string(Mobilizing), testIncursion.State)
 }

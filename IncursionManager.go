@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 type NotifFunction func(Incursion)
@@ -24,7 +25,7 @@ func (manager *IncursionManager) GetIncursions() IncursionList {
 }
 
 func (manager *IncursionManager) NextSpawns() string {
-	return fmt.Sprintf("\nNext nullsec spawn: %s\nNext lowsec spawn: %s", 
+	return fmt.Sprintf("\nNext nullsec spawn window: %s\nNext lowsec spawn window: %s", 
 	  manager.nullTracker.nextRespawn(), 
 		manager.lowTracker.nextRespawn())
 }
@@ -62,6 +63,7 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 				logger.Errorf("Received an invalid incursion located in %d, discarding...", incursion.StagingSystem.ID)
 				continue
 			}
+			incursion.StateChanged = time.Now()
 
 			if incursion.Security == NullSec {
 				manager.nullTracker.Spawn(incursion)
@@ -69,23 +71,24 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 				manager.lowTracker.Spawn(incursion)
 			}
 
-
 			manager.onNewIncursion(incursion)
+			toSave = append(toSave, incursion)
 		} else {
 			logger.Infof("Found existing incursion in %s to update", existingIncursion.ToString())
 			if existingIncursion.Update(incursion.Influence, incursion.State) {
+				existingIncursion.StateChanged = time.Now()
 
-			if incursion.Security == NullSec {
-				manager.nullTracker.Update(incursion)
-			} else {
-				manager.lowTracker.Update(incursion)
+				if incursion.Security == NullSec {
+					manager.nullTracker.Update(*existingIncursion)
+				} else {
+					manager.lowTracker.Update(*existingIncursion)
+				}
+
+				manager.onIncursionUpdate(*existingIncursion)
 			}
 
-				manager.onIncursionUpdate(incursion)
-			}
+			toSave = append(toSave, *existingIncursion)
 		}
-
-		toSave = append(toSave, incursion)
 	}
 
 	// Check for despawns
