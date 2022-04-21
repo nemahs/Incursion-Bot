@@ -21,7 +21,7 @@ func TestUpdateIncursion(t *testing.T) {
 
 	res = testIncursion.Update(.5, Mobilizing)
 	assert.True(t, res)
-	assert.Equal(t, string(Mobilizing), testIncursion.State)
+	assert.Equal(t, Mobilizing, testIncursion.State)
 }
 
 func TestFind(t *testing.T) {
