@@ -8,6 +8,7 @@ import (
 const respawnWindowStart time.Duration = time.Hour * 12
 const respawnWindowEnd time.Duration = time.Hour * 36
 const day time.Duration = time.Hour * 24
+const unknownString string = "Unknown"
 
 type IncursionTimeTracker struct {
 	currentIncursions    IncursionList
@@ -15,6 +16,10 @@ type IncursionTimeTracker struct {
 }
 
 func respawnTime(incursion Incursion) time.Time {
+	if incursion.StateChanged.IsZero() {
+		return time.Time{} // Cannot make meaningful guess about the respawn time
+	}
+
 	switch incursion.State {
 	case Respawning:
 		return incursion.StateChanged.Add(respawnWindowStart)
@@ -61,14 +66,14 @@ func (tracker *IncursionTimeTracker) Spawn(incursion Incursion) {
 	tracker.currentIncursions = append(tracker.currentIncursions, incursion)
 
 	if !tracker.respawningIncursions.Empty() {
-		var toRemove int = -1
+		var toRemove int = 0
 		for i, incursion := range tracker.respawningIncursions {
 			if incursion.StateChanged.Before(tracker.respawningIncursions[toRemove].StateChanged) {
 				toRemove = i
 			}
 		}
 
-		if toRemove > -1 { tracker.respawningIncursions.Remove(toRemove) }
+		tracker.respawningIncursions.Remove(toRemove)
 		logger.Debugln("Removed respawning incursion")
 	}
 
@@ -95,7 +100,7 @@ func (tracker *IncursionTimeTracker) nextRespawn() string {
 	for _, incursion := range toCheck {
 		logger.Debugf("Considering %s", incursion.StagingSystem.Name)
 		respawnTime := respawnTime(incursion)
-		if respawnTime.Before(nextRespawnTime) || nextRespawnTime.IsZero() {
+		if !respawnTime.IsZero() && (respawnTime.Before(nextRespawnTime) || nextRespawnTime.IsZero()) {
 			logger.Debugf("%s now the next to respawn", incursion.StagingSystem.Name)
 			nextToRespawn = incursion
 			nextRespawnTime = respawnTime
@@ -103,7 +108,7 @@ func (tracker *IncursionTimeTracker) nextRespawn() string {
 	}
 
 	if nextRespawnTime.IsZero() {
-		return "Unknown"
+		return unknownString
 	}
 
 	logger.Infof("Picked %s as next to respawn, respawn time %s", nextToRespawn.StagingSystem.Name, nextRespawnTime)
