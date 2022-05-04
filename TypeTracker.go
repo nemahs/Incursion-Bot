@@ -65,6 +65,9 @@ func (tracker *IncursionTimeTracker) Despawn(incursion Incursion) {
 func (tracker *IncursionTimeTracker) Spawn(incursion Incursion) {
 	tracker.currentIncursions = append(tracker.currentIncursions, incursion)
 
+	logger.Debugf("Current: %+v", tracker.currentIncursions)
+	logger.Debugf("Respawning: %+v", tracker.respawningIncursions)
+
 	if !tracker.respawningIncursions.Empty() {
 		var toRemove int = 0
 		for i, incursion := range tracker.respawningIncursions {

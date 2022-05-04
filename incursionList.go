@@ -11,7 +11,7 @@ func (list *IncursionList) find(inc Incursion) *Incursion {
 	return nil
 }
 
-func (list *IncursionList) Empty() bool { return len(*list) > 0 }
+func (list *IncursionList) Empty() bool { return len(*list) == 0 }
 
 func (list *IncursionList) Remove(i int) {
 	*list = append((*list)[:i], (*list)[i+1:]...)
