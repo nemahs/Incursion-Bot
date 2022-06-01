@@ -87,7 +87,8 @@ func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
 	found := tracker.currentIncursions.find(incursion)
 
 	if found != nil {
-		*found = incursion
+		found.StateChanged = incursion.StateChanged;
+		found.State = incursion.State;
 		logger.Debugln("Updated incursion")
 	} else {
 		tracker.currentIncursions = append(tracker.currentIncursions, incursion)
