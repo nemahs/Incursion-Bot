@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  incursion-bot:
+    build: .
+    command: ['--file', '/run/secrets/userData', '--chat', 'testbot']
+    secrets:
+      - userData
+    restart: on-failure
+
+secrets:
+  userData:
+    file: /home/nemahs/userData
