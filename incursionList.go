@@ -3,9 +3,9 @@ package main
 type IncursionList []Incursion
 
 func (list *IncursionList) find(inc Incursion) *Incursion {
-	for _, incursion := range *list {
+	for i, incursion := range *list {
 		if incursion.StagingSystem.ID == inc.StagingSystem.ID {
-			return &incursion
+			return &(*list)[i]
 		}
 	}
 	return nil

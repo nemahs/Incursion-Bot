@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -14,6 +15,11 @@ type Logger struct {
 }
 
 func NewLogger(debug bool) Logger {
+
+	if debug {
+		fmt.Printf("Logger initialized in debug mode.")
+	}
+
 	return Logger{
 		infoLogger: log.New(os.Stdout, "INFO: ", log.LstdFlags|log.LUTC),
 		warnLogger: log.New(os.Stderr, "WARN: ", log.LstdFlags|log.LUTC),

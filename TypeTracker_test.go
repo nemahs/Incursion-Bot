@@ -9,14 +9,11 @@ import (
 )
 
 
-func TestMain(m *testing.M) {
-	logger = logging.NewLogger(false)
-}
-
 func TestRespawnTime(t *testing.T) {
 	assert := assert.New(t)
 	testInc := Incursion{}
 	testInc.StateChanged = time.Now()
+	logger = logging.NewLogger(false)
 
 	t.Run("Established Respawn", func(t *testing.T) {
 		testInc.State = Established
@@ -61,6 +58,8 @@ func TestNextRespawn(t *testing.T) {
 	var testSubject IncursionTimeTracker
 	testTime := time.Now()
 	timeOne := formatDuration(36 * time.Hour - time.Second)
+	logger = logging.NewLogger(false)
+	time.Sleep(200)
 
 	t.Run("1 incursion, no info", func(t *testing.T) {
 		testSubject.currentIncursions = append(testSubject.currentIncursions, Incursion{})
@@ -95,6 +94,7 @@ func TestNextRespawn(t *testing.T) {
 func TestIncursionManagement(t *testing.T) {
 	assert := assert.New(t)
 	var testSubject IncursionTimeTracker
+	logger = logging.NewLogger(false)
 
 	t.Run("Spawn incursion", func(t *testing.T) {
 		newInc := Incursion{StagingSystem: NamedItem{ID: 1}}
@@ -105,7 +105,7 @@ func TestIncursionManagement(t *testing.T) {
 	})
 
 	t.Run("Update incursion", func(t *testing.T) {
-		updateInc := Incursion{StagingSystem: NamedItem{ID: 1}, State: Mobilizing}
+		updateInc := Incursion{StagingSystem: NamedItem{ID: 1}, State: Mobilizing, StateChanged: time.Now()}
 		testSubject.Update(updateInc)
 
 		assert.Equal(1, len(testSubject.currentIncursions))
@@ -114,13 +114,13 @@ func TestIncursionManagement(t *testing.T) {
 	})
 
 	t.Run("Update non-existing", func(t *testing.T) {
-		newInc := Incursion{StagingSystem: NamedItem{ID: 2}, State: Withdrawing}
+		newInc := Incursion{StagingSystem: NamedItem{ID: 2}, State: Withdrawing, StateChanged: time.Now()}
 		testSubject.Update(newInc)
 
 		assert.Equal(2, len(testSubject.currentIncursions))
 		assert.Empty(testSubject.respawningIncursions)
 		assert.Equal(2, testSubject.currentIncursions[1].StagingSystem.ID)
-		assert.Equal(Withdrawing, testSubject.currentIncursions[1])
+		assert.Equal(Withdrawing, testSubject.currentIncursions[1].State)
 		assert.NotZero(testSubject.currentIncursions[1].StateChanged)
 	})
 

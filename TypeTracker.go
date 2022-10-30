@@ -65,9 +65,6 @@ func (tracker *IncursionTimeTracker) Despawn(incursion Incursion) {
 func (tracker *IncursionTimeTracker) Spawn(incursion Incursion) {
 	tracker.currentIncursions = append(tracker.currentIncursions, incursion)
 
-	logger.Debugf("Current: %+v", tracker.currentIncursions)
-	logger.Debugf("Respawning: %+v", tracker.respawningIncursions)
-
 	if !tracker.respawningIncursions.Empty() {
 		var toRemove int = 0
 		for i, incursion := range tracker.respawningIncursions {
@@ -87,9 +84,12 @@ func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
 	found := tracker.currentIncursions.find(incursion)
 
 	if found != nil {
+		*found = incursion
 		found.StateChanged = incursion.StateChanged;
 		found.State = incursion.State;
 		logger.Debugln("Updated incursion")
+		logger.Debugf("Found: %+v", found)
+		logger.Debugf("Passed in: %+v", incursion)
 	} else {
 		tracker.currentIncursions = append(tracker.currentIncursions, incursion)
 		logger.Debugf("Found an update for an incursion we weren't tracking in %s, adding to list", incursion.ToString())
@@ -103,6 +103,7 @@ func (tracker *IncursionTimeTracker) nextRespawn() string {
 	toCheck := append(tracker.currentIncursions, tracker.respawningIncursions...)
 	for _, incursion := range toCheck {
 		logger.Debugf("Considering %s", incursion.StagingSystem.Name)
+		logger.Debugf("State: %s", incursion.State)
 		respawnTime := respawnTime(incursion)
 		if !respawnTime.IsZero() && (respawnTime.Before(nextRespawnTime) || nextRespawnTime.IsZero()) {
 			logger.Debugf("%s now the next to respawn", incursion.StagingSystem.Name)

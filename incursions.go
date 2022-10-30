@@ -120,7 +120,7 @@ func (inc *Incursion) TimeLeftString() string {
     return fmt.Sprintf("NLT %s", despawn.UTC().Format(timeFormat))
   }
   
-  return fmt.Sprintf("%s", despawn.UTC().Format(timeFormat))
+  return fmt.Sprintf(despawn.UTC().Format(timeFormat))
 }
 
 
