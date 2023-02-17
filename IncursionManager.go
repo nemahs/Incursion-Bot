@@ -9,8 +9,8 @@ import (
 type NotifFunction func(Incursion)
 
 type IncursionManager struct {
-	incursionMut sync.Mutex
-	incursions   IncursionList
+	incursionMut            sync.Mutex
+	incursions              IncursionList
 	nullTracker, lowTracker IncursionTimeTracker
 
 	onNewIncursion     NotifFunction
@@ -25,8 +25,8 @@ func (manager *IncursionManager) GetIncursions() IncursionList {
 }
 
 func (manager *IncursionManager) NextSpawns() string {
-	return fmt.Sprintf("\nNext nullsec spawn window: %s\nNext lowsec spawn window: %s", 
-	  manager.nullTracker.nextRespawn(), 
+	return fmt.Sprintf("\nNext nullsec spawn window: %s\nNext lowsec spawn window: %s",
+		manager.nullTracker.nextRespawn(),
 		manager.lowTracker.nextRespawn())
 }
 
@@ -52,7 +52,7 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 	logger.Infoln("------Processing new set of incursions-----")
 
 	for _, incursion := range newIncursions {
-		if (incursion.Security == HighSec) {
+		if incursion.Security == HighSec {
 			continue // We do not give a fuck about high sec
 		}
 

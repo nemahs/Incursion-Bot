@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestRespawnTime(t *testing.T) {
 	assert := assert.New(t)
 	testInc := Incursion{}
@@ -17,27 +16,27 @@ func TestRespawnTime(t *testing.T) {
 
 	t.Run("Established Respawn", func(t *testing.T) {
 		testInc.State = Established
-		assert.Equal(testInc.StateChanged.Add(((8 * 24) + 12) * time.Hour) , respawnTime(testInc))
+		assert.Equal(testInc.StateChanged.Add(((8*24)+12)*time.Hour), respawnTime(testInc))
 	})
 
 	t.Run("Mobilizing Respawn", func(t *testing.T) {
 		testInc.State = Mobilizing
-		assert.Equal(testInc.StateChanged.Add(84 * time.Hour), respawnTime(testInc))
+		assert.Equal(testInc.StateChanged.Add(84*time.Hour), respawnTime(testInc))
 	})
 
 	t.Run("Withdrawing Respawn", func(t *testing.T) {
 		testInc.State = Withdrawing
-		assert.Equal(testInc.StateChanged.Add(36 * time.Hour), respawnTime(testInc))
+		assert.Equal(testInc.StateChanged.Add(36*time.Hour), respawnTime(testInc))
 	})
 
 	t.Run("Respawning - pre window", func(t *testing.T) {
 		testInc.State = Respawning
-		assert.Equal(testInc.StateChanged.Add(12 * time.Hour), respawnTime(testInc))
+		assert.Equal(testInc.StateChanged.Add(12*time.Hour), respawnTime(testInc))
 	})
 
 	t.Run("Respawning - in window", func(t *testing.T) {
 		testInc.StateChanged = time.Now().Add(-13 * time.Hour)
-		assert.Equal(testInc.StateChanged.Add(12 * time.Hour), respawnTime(testInc))
+		assert.Equal(testInc.StateChanged.Add(12*time.Hour), respawnTime(testInc))
 	})
 
 	t.Run("Bad state", func(t *testing.T) {
@@ -57,7 +56,7 @@ func TestNextRespawn(t *testing.T) {
 	assert := assert.New(t)
 	var testSubject IncursionTimeTracker
 	testTime := time.Now()
-	timeOne := formatDuration(36 * time.Hour - time.Second)
+	timeOne := formatDuration(36*time.Hour - time.Second)
 	logger = logging.NewLogger(false)
 	time.Sleep(200)
 
@@ -75,7 +74,7 @@ func TestNextRespawn(t *testing.T) {
 
 	t.Run("3 incursions, some valid", func(t *testing.T) {
 		testSubject.currentIncursions = append(testSubject.currentIncursions, Incursion{
-			State: Established,
+			State:        Established,
 			StateChanged: testTime,
 		})
 

@@ -6,11 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
-
 func TestUpdateIncursion(t *testing.T) {
 	var testIncursion Incursion
-
 
 	testIncursion.State = Established
 	testIncursion.Influence = 0
@@ -26,7 +23,7 @@ func TestUpdateIncursion(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	var testList IncursionList
-	testIncursion := Incursion {
+	testIncursion := Incursion{
 		StagingSystem: NamedItem{ID: 1234},
 	}
 
@@ -34,7 +31,7 @@ func TestFind(t *testing.T) {
 
 	assert.NotEmpty(t, testList.find(testIncursion))
 
-	newIncursion := Incursion {
+	newIncursion := Incursion{
 		StagingSystem: NamedItem{ID: 2345},
 	}
 

@@ -6,14 +6,13 @@ import (
 )
 
 type CacheEntry struct {
-  Data           reflect.Value
-  ExpirationTime time.Time
-  Etag string
+	Data           reflect.Value
+	ExpirationTime time.Time
+	Etag           string
 }
 
 func (entry *CacheEntry) Expired() bool {
-  return time.Now().After(entry.ExpirationTime)
+	return time.Now().After(entry.ExpirationTime)
 }
 
-
-type CacheMap map[int] CacheEntry
+type CacheMap map[int]CacheEntry

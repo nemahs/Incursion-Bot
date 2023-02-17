@@ -7,11 +7,11 @@ import (
 )
 
 func TestParseMUC(t *testing.T) {
-  testServer := "test.com"
-  testMUC := "testRoom@" + testServer
-  testJID := testMUC + "/someUser"
+	testServer := "test.com"
+	testMUC := "testRoom@" + testServer
+	testJID := testMUC + "/someUser"
 
-  muc := parseMuc(testJID,testServer)
+	muc := parseMuc(testJID, testServer)
 
-  assert.Equal(t,testMUC, muc)
+	assert.Equal(t, testMUC, muc)
 }

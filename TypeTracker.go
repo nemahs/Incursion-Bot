@@ -42,7 +42,7 @@ func formatDuration(duration time.Duration) string {
 	var result string
 
 	if duration > day {
-		result += fmt.Sprintf("%dd", int(duration.Hours() / 24))
+		result += fmt.Sprintf("%dd", int(duration.Hours()/24))
 		duration = duration % day
 	}
 
@@ -85,8 +85,8 @@ func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
 
 	if found != nil {
 		*found = incursion
-		found.StateChanged = incursion.StateChanged;
-		found.State = incursion.State;
+		found.StateChanged = incursion.StateChanged
+		found.State = incursion.State
 		logger.Debugln("Updated incursion")
 		logger.Debugf("Found: %+v", found)
 		logger.Debugf("Passed in: %+v", incursion)

@@ -17,18 +17,18 @@ type JabberConnection struct {
 	username string
 	password string
 	nickname string
-	client *xmpp.Client
+	client   *xmpp.Client
 }
 
-var logger = logging.NewLogger(false) // TODO: Allow enabling of debug messages 
+var logger = logging.NewLogger(false) // TODO: Allow enabling of debug messages
 
 const retryDuration = time.Minute // Time to wait between reconnect attempts
 
 // Create a new jabber connection
 func CreateNewJabberConnection(server string, channel string, username string, password string, nickname string) (JabberConnection, error) {
-	newServer := JabberConnection {
-		server: server,
-		channel: channel,
+	newServer := JabberConnection{
+		server:   server,
+		channel:  channel,
 		username: username,
 		password: password,
 		nickname: nickname,
@@ -45,10 +45,14 @@ func (conn *JabberConnection) ConnectToChannel() error {
 	// The connection breaks if you try to initiate connected, better to let the server promote the connection to TLS
 	conn.client, err = xmpp.NewClientNoTLS(conn.server, conn.username, conn.password, false)
 
-	if err != nil { return err }
-	if !conn.client.IsEncrypted() { return errors.New("Server did not promote connection to TLS") }
+	if err != nil {
+		return err
+	}
+	if !conn.client.IsEncrypted() {
+		return errors.New("Server did not promote connection to TLS")
+	}
 
-  mucJID := fmt.Sprintf("%s@%s", conn.channel, conn.server)
+	mucJID := fmt.Sprintf("%s@%s", conn.channel, conn.server)
 	logger.Infof("Joining %s as %s", mucJID, conn.nickname)
 	_, err = conn.client.JoinMUCNoHistory(mucJID, conn.nickname)
 
@@ -88,12 +92,14 @@ func (comm *JabberConnection) GetNextChatMessage() (Chat.ChatMsg, error) {
 		}
 
 		chatMsg, ok := msg.(xmpp.Chat)
-		if !ok || len(chatMsg.Text) == 0 { continue } // Not a valid chat message
+		if !ok || len(chatMsg.Text) == 0 {
+			continue
+		} // Not a valid chat message
 
 		return Chat.ChatMsg{
 			Sender: chatMsg.Remote,
-			Type: parseMsgType(chatMsg),
-			Text: chatMsg.Text,
+			Type:   parseMsgType(chatMsg),
+			Text:   chatMsg.Text,
 		}, nil
 	}
 }
@@ -122,9 +128,9 @@ func (conn *JabberConnection) BroadcastToDefaultChannel(message string) error {
 
 func (conn *JabberConnection) SendToUser(message string, user string) error {
 	msg := xmpp.Chat{
-		Type: privateMessage,
+		Type:   privateMessage,
 		Remote: user,
-		Text: message,
+		Text:   message,
 	}
 
 	_, err := conn.client.Send(msg)
@@ -144,27 +150,27 @@ func parseMsgType(msg xmpp.Chat) Chat.MessageType {
 
 // Create a message to go to a conference room
 func (conn *JabberConnection) newGroupMessage(muc string, text string) xmpp.Chat {
-  return xmpp.Chat{
-    Remote: fmt.Sprintf("%s@%s", muc, conn.server),
-    Type: conferenceChat,
-    Text:   text,
-  }
+	return xmpp.Chat{
+		Remote: fmt.Sprintf("%s@%s", muc, conn.server),
+		Type:   conferenceChat,
+		Text:   text,
+	}
 }
 
 // Create a reply back to the chat that requested it
 func (conn *JabberConnection) createReply(origMsg Chat.ChatMsg, response string) xmpp.Chat {
-  result := xmpp.Chat{
-    Text: response,
-  }
+	result := xmpp.Chat{
+		Text: response,
+	}
 
-  if origMsg.Type == Chat.ChannelMessage {
-    // Strip username off the end for remote
-    result.Remote = parseMuc(origMsg.Sender, conn.server)
+	if origMsg.Type == Chat.ChannelMessage {
+		// Strip username off the end for remote
+		result.Remote = parseMuc(origMsg.Sender, conn.server)
 		result.Type = conferenceChat
-  } else {
-    result.Remote = origMsg.Sender
+	} else {
+		result.Remote = origMsg.Sender
 		result.Type = privateMessage
-  }
+	}
 
-  return result
+	return result
 }
