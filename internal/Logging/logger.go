@@ -7,11 +7,11 @@ import (
 )
 
 type Logger struct {
-	infoLogger *log.Logger
-	warnLogger *log.Logger
-	errLogger  *log.Logger
+	infoLogger  *log.Logger
+	warnLogger  *log.Logger
+	errLogger   *log.Logger
 	debugLogger *log.Logger
-	DebugMode bool
+	DebugMode   bool
 }
 
 func NewLogger(debug bool) Logger {
@@ -21,11 +21,11 @@ func NewLogger(debug bool) Logger {
 	}
 
 	return Logger{
-		infoLogger: log.New(os.Stdout, "INFO: ", log.LstdFlags|log.LUTC),
-		warnLogger: log.New(os.Stderr, "WARN: ", log.LstdFlags|log.LUTC),
-		errLogger:  log.New(os.Stderr, "ERROR: ", log.LstdFlags|log.LUTC),
+		infoLogger:  log.New(os.Stdout, "INFO: ", log.LstdFlags|log.LUTC),
+		warnLogger:  log.New(os.Stderr, "WARN: ", log.LstdFlags|log.LUTC),
+		errLogger:   log.New(os.Stderr, "ERROR: ", log.LstdFlags|log.LUTC),
 		debugLogger: log.New(os.Stdout, "DEBUG: ", log.LstdFlags|log.LUTC),
-		DebugMode: debug,
+		DebugMode:   debug,
 	}
 }
 

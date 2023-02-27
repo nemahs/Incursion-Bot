@@ -110,9 +110,9 @@ func (c *ESIClient) GetConstInfo(constID int) (ConstellationData, error) {
 // ----------- SYSTEM INFO -----------
 
 type SystemData struct {
-	ID            int           `json:"system_id"`
-	Name          string        `json:"name"`
-	SecStatus     float64       `json:"security_status"`
+	ID        int     `json:"system_id"`
+	Name      string  `json:"name"`
+	SecStatus float64 `json:"security_status"`
 }
 
 var systemCache CacheMap = make(CacheMap)
@@ -140,19 +140,19 @@ func (c *ESIClient) GetSystemInfo(systemID int) (SystemData, error) {
 type Route []int
 
 func (c *ESIClient) GetRouteLength(startSystem int, endSystem int) (int, error) {
-  var resultData Route
-  url := fmt.Sprintf("%s/route/%d/%d/", c.baseURL, startSystem, endSystem)
-  resp, err := http.Get(url)
-  if err != nil {
-    errorLog.Println("Failed HTTP request for route length", err)
-    return -1, err
-  }
+	var resultData Route
+	url := fmt.Sprintf("%s/route/%d/%d/", c.baseURL, startSystem, endSystem)
+	resp, err := http.Get(url)
+	if err != nil {
+		errorLog.Println("Failed HTTP request for route length", err)
+		return -1, err
+	}
 
-  err = c.parseResults(resp, &resultData)
-  if err != nil {
-    errorLog.Println("Error occurred parsing results", err)
-    return -1, err
-  }
+	err = c.parseResults(resp, &resultData)
+	if err != nil {
+		errorLog.Println("Error occurred parsing results", err)
+		return -1, err
+	}
 
-  return len(resultData) - 1, nil // Subtract off the start and end systems
+	return len(resultData) - 1, nil // Subtract off the start and end systems
 }
