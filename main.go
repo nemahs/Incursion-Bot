@@ -123,7 +123,7 @@ func init() {
 	commandsMap = NewCommandMap()
 	commandsMap.AddCommand("incursions", listIncursions, "Lists the current incursions")
 	commandsMap.AddCommand("uptime", getUptime, "Gets the current bot uptime")
-	commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")
+	//	commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")   REMOVED UNTIL IMPLEMENTED
 	commandsMap.AddCommand("nextspawn", nextSpawn, "Lists the start of the next spawn window for null and low incursions")
 	commandsMap.AddCommand("waitlist", waitlistInstructions, "Explains how to join the manual waitlist while the waitlist site is down")
 }
