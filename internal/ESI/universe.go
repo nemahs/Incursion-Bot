@@ -45,7 +45,7 @@ func (c *ESIClient) GetNames(ids []int) (NameMap, error) {
 		return result, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/universe/names/", bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", c.baseURL+"/universe/names/", bytes.NewBuffer(data))
 	if err != nil {
 		errorLog.Println("Failed to create name request", req)
 		return result, err
@@ -91,7 +91,7 @@ var constDataCache CacheMap = make(CacheMap)
 func (c *ESIClient) GetConstInfo(constID int) (ConstellationData, error) {
 	var response ConstellationData
 	url := fmt.Sprintf("%s/universe/constellations/%d/", c.baseURL, constID)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		errorLog.Printf("Failed to create constellation info request for id: %d", constID)
 		return response, err
@@ -110,9 +110,11 @@ func (c *ESIClient) GetConstInfo(constID int) (ConstellationData, error) {
 // ----------- SYSTEM INFO -----------
 
 type SystemData struct {
-	ID        int     `json:"system_id"`
-	Name      string  `json:"name"`
-	SecStatus float64 `json:"security_status"`
+	ID            int           `json:"system_id"`
+	Name          string        `json:"name"`
+	SecStatus     float64       `json:"security_status"`
+	Gates         []int         `json:"stargates"`
+	SecurityClass SecurityClass // Not part of the response
 }
 
 var systemCache CacheMap = make(CacheMap)
@@ -120,7 +122,7 @@ var systemCache CacheMap = make(CacheMap)
 func (c *ESIClient) GetSystemInfo(systemID int) (SystemData, error) {
 	var results SystemData
 	url := fmt.Sprintf("%s/universe/systems/%d/", c.baseURL, systemID)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		errorLog.Println("An error occurred creating the system info request", err)
 		return results, err
@@ -132,6 +134,7 @@ func (c *ESIClient) GetSystemInfo(systemID int) (SystemData, error) {
 		errorLog.Println("An error occurred getting system info", err)
 		return results, err
 	}
+	results.SecurityClass = guessSecClass(results.SecStatus)
 
 	return results, nil
 }
@@ -154,5 +157,75 @@ func (c *ESIClient) GetRouteLength(startSystem int, endSystem int) (int, error) 
 		return -1, err
 	}
 
-	return len(resultData) - 1, nil // Subtract off the start and end systems
+	return len(resultData) - 2, nil // Subtract off the start and end systems
+}
+
+type SecurityClass string
+
+const (
+	HighSec SecurityClass = "High"
+	LowSec  SecurityClass = "Low"
+	NullSec SecurityClass = "Null"
+)
+
+func guessSecClass(status float64) SecurityClass {
+	if status > .5 {
+		return HighSec
+	} else if status > .1 {
+		return LowSec
+	}
+	return NullSec
+}
+
+type StargateResponse struct {
+	Destination struct {
+		GateID   int `json:"stargate_id"`
+		SystemID int `json:"system_id"`
+	} `json:"destination"`
+	Name   string `json:"name"`
+	GateID int    `json:"stargate_id"`
+}
+
+var gateCache = make(CacheMap)
+
+func (c *ESIClient) GetStargateData(gateID int) (StargateResponse, error) {
+	var resultData StargateResponse
+	url := fmt.Sprintf("%s/universe/stargates/%d/", c.baseURL, gateID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return resultData, err
+	}
+
+	cacheData := gateCache[gateID]
+	err = c.cachedCall(req, &cacheData, &resultData)
+	return resultData, err
+}
+
+func (c *ESIClient) GetSystemConnections(systemID int) ([]StargateResponse, error) {
+	systemData, err := c.GetSystemInfo(systemID)
+	var result []StargateResponse
+
+	if err != nil {
+		return []StargateResponse{}, err
+	}
+	resultChan := make(chan StargateResponse)
+
+	for _, gate := range systemData.Gates {
+		go func(result chan<- StargateResponse, gateID int) {
+			res, err := c.GetStargateData(gateID)
+			if err != nil {
+				resultChan <- StargateResponse{}
+				fmt.Println(err)
+			} else {
+				resultChan <- res
+			}
+		}(resultChan, gate)
+	}
+
+	for range systemData.Gates {
+		out := <-resultChan
+		result = append(result, out)
+	}
+
+	return result, nil
 }

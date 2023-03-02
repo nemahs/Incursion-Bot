@@ -70,7 +70,8 @@ type NamedItem struct {
 
 type Incursion struct {
 	Constellation NamedItem      // Constellation the incursion is in
-	StagingSystem NamedItem      // Name of the HQ system
+	StagingSystem NamedItem      // Name of the staging system
+	HQSystem      NamedItem      // Name of the HQ system
 	Influence     float64        // Influence of the incursion from 0 to 1 inclusive
 	Region        NamedItem      // Region the incursion is in
 	State         IncursionState // Current state of the incursion
@@ -86,7 +87,7 @@ func (inc *Incursion) Equal(other Incursion) bool {
 }
 
 func (inc *Incursion) ToString() string {
-	return fmt.Sprintf("%s {%.2f} (%s - %s)", inc.StagingSystem.Name, inc.SecStatus, inc.Constellation.Name, inc.Region.Name)
+	return fmt.Sprintf("%s {%.2f} (HQ: %s) (%s - %s)", inc.StagingSystem.Name, inc.SecStatus, inc.HQSystem.Name, inc.Constellation.Name, inc.Region.Name)
 }
 
 func (inc *Incursion) TimeLeftInSpawn() (time.Time, error) {
@@ -101,7 +102,7 @@ func (inc *Incursion) TimeLeftInSpawn() (time.Time, error) {
 		return inc.StateChanged.Add(withdrawingLifetime), nil
 	}
 
-	return time.Time{}, fmt.Errorf("Not a state we can deal with")
+	return time.Time{}, fmt.Errorf("not a state we can deal with")
 }
 
 func (inc *Incursion) TimeLeftString() string {
@@ -120,7 +121,7 @@ func (inc *Incursion) TimeLeftString() string {
 		return fmt.Sprintf("NLT %s", despawn.UTC().Format(timeFormat))
 	}
 
-	return fmt.Sprintf(despawn.UTC().Format(timeFormat))
+	return fmt.Sprintln(despawn.UTC().Format(timeFormat))
 }
 
 // Updates the give incursion wih new data. Returns true if the state changed, False otherwise.

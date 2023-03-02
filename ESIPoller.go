@@ -81,5 +81,8 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 	newIncursion.Region.Name = names[constData.RegionID]
 
 	newIncursion.IsValid = true
+
+	newIncursion.HQSystem = GuessHQSystem(incursion, client)
+
 	return newIncursion
 }
