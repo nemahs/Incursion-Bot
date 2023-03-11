@@ -10,7 +10,7 @@ const respawnWindowEnd time.Duration = time.Hour * 36
 const day time.Duration = time.Hour * 24
 const unknownString string = "Unknown"
 
-type IncursionTimeTracker struct {
+type SpawnTracker struct {
 	currentIncursions    IncursionList
 	respawningIncursions IncursionList
 }
@@ -53,7 +53,7 @@ func formatDuration(duration time.Duration) string {
 	return result
 }
 
-func (tracker *IncursionTimeTracker) Despawn(incursion Incursion) {
+func (tracker *SpawnTracker) Despawn(incursion Incursion) {
 	tracker.currentIncursions.RemoveFunc(incursion.Equal)
 
 	incursion.State = Respawning
@@ -62,7 +62,7 @@ func (tracker *IncursionTimeTracker) Despawn(incursion Incursion) {
 	logger.Debugf("Added respawning incursion from %s", incursion.ToString())
 }
 
-func (tracker *IncursionTimeTracker) Spawn(incursion Incursion) {
+func (tracker *SpawnTracker) Spawn(incursion Incursion) {
 	tracker.currentIncursions = append(tracker.currentIncursions, incursion)
 
 	if !tracker.respawningIncursions.Empty() {
@@ -80,7 +80,7 @@ func (tracker *IncursionTimeTracker) Spawn(incursion Incursion) {
 	logger.Debugf("Tracking new incursion in %s", incursion.ToString())
 }
 
-func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
+func (tracker *SpawnTracker) Update(incursion Incursion) {
 	found := tracker.currentIncursions.find(incursion)
 
 	if found != nil {
@@ -96,7 +96,7 @@ func (tracker *IncursionTimeTracker) Update(incursion Incursion) {
 	}
 }
 
-func (tracker *IncursionTimeTracker) nextRespawn() string {
+func (tracker *SpawnTracker) nextRespawn() string {
 	var nextToRespawn Incursion
 	var nextRespawnTime time.Time
 

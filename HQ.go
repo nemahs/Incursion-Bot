@@ -3,7 +3,6 @@ package main
 import (
 	"IncursionBot/internal/ESI"
 	"IncursionBot/internal/Utils"
-	"fmt"
 )
 
 func GuessHQSystem(incursion ESI.IncursionResponse, esi ESI.ESIClient) NamedItem {
@@ -37,7 +36,7 @@ func GuessHQSystem(incursion ESI.IncursionResponse, esi ESI.ESIClient) NamedItem
 
 	hqSystem := traverseSystems(&data, incursion.IncursionSystems, esi)
 
-	fmt.Printf("Guessed that HQ system was %s\n", hqSystem.Name)
+	logger.Infof("Guessed that HQ system was %s\n", hqSystem.Name)
 	return hqSystem
 }
 
@@ -65,7 +64,7 @@ func traverseSystems(data *HQGuessData, validSystems Utils.IDList, esi ESI.ESICl
 
 	systemInfo, _ := esi.GetSystemInfo(currentSystem.SystemID)
 	if data.remainingAssaults == 0 && data.remainingVanguards == 0 {
-		logger.Infof("Guessing %s is the HQ", systemInfo.Name)
+		logger.Debugf("Guessing %s is the HQ", systemInfo.Name)
 		return NamedItem{ID: currentSystem.SystemID, Name: systemInfo.Name}
 	} // Found our boy
 
@@ -75,10 +74,10 @@ func traverseSystems(data *HQGuessData, validSystems Utils.IDList, esi ESI.ESICl
 	// Guess the type
 	if data.remainingVanguards > 0 {
 		data.remainingVanguards--
-		logger.Infof("Guessing %s is a vanguard", systemInfo.Name)
+		logger.Debugf("Guessing %s is a vanguard", systemInfo.Name)
 	} else {
 		data.remainingAssaults--
-		logger.Infof("Guessing %s is an assault", systemInfo.Name)
+		logger.Debugf("Guessing %s is an assault", systemInfo.Name)
 	}
 
 	data.visited = append(data.visited, currentSystem.SystemID)

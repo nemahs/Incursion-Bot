@@ -54,7 +54,7 @@ func TestRespawnTime(t *testing.T) {
 
 func TestNextRespawn(t *testing.T) {
 	assert := assert.New(t)
-	var testSubject IncursionTimeTracker
+	var testSubject SpawnTracker
 	testTime := time.Now()
 	timeOne := formatDuration(36*time.Hour - time.Second)
 	logger = logging.NewLogger(false)
@@ -92,7 +92,7 @@ func TestNextRespawn(t *testing.T) {
 
 func TestIncursionManagement(t *testing.T) {
 	assert := assert.New(t)
-	var testSubject IncursionTimeTracker
+	var testSubject SpawnTracker
 	logger = logging.NewLogger(false)
 
 	t.Run("Spawn incursion", func(t *testing.T) {

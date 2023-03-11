@@ -11,7 +11,7 @@ type NotifFunction func(Incursion)
 type IncursionManager struct {
 	incursionMut            sync.Mutex
 	incursions              IncursionList
-	nullTracker, lowTracker IncursionTimeTracker
+	nullTracker, lowTracker SpawnTracker
 
 	onNewIncursion     NotifFunction
 	onIncursionUpdate  NotifFunction
