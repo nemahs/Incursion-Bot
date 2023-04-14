@@ -5,7 +5,7 @@ import (
 	"IncursionBot/internal/Utils"
 )
 
-func GuessHQSystem(incursion ESI.IncursionResponse, esi ESI.ESIClient) NamedItem {
+func GuessHQSystem(incursion ESI.IncursionResponse, esi ESI.ESIClient) (hqSystem NamedItem) {
 	vanguards := len(incursion.IncursionSystems) - 3 // Staging and HQ
 	assaults := 1
 
@@ -34,7 +34,15 @@ func GuessHQSystem(incursion ESI.IncursionResponse, esi ESI.ESIClient) NamedItem
 		}
 	}
 
-	hqSystem := traverseSystems(&data, incursion.IncursionSystems, esi)
+	// Error handling in case ESI dorks up
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorln("Recovered from panic while guessing HQ system", r)
+			hqSystem = NamedItem{Name: "Unknown", ID: 0}
+		}
+	}()
+
+	hqSystem = traverseSystems(&data, incursion.IncursionSystems, esi)
 
 	logger.Infof("Guessed that HQ system was %s\n", hqSystem.Name)
 	return hqSystem
@@ -60,6 +68,10 @@ func (list *TestList) ReverseSort() {
 }
 
 func traverseSystems(data *HQGuessData, validSystems Utils.IDList, esi ESI.ESIClient) NamedItem {
+	if data.queue.IsEmpty() {
+		panic("Queue was empty, ESI issue may have occurred")
+	}
+
 	currentSystem := data.queue.Pop()
 
 	systemInfo, _ := esi.GetSystemInfo(currentSystem.SystemID)
