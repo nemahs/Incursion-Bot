@@ -18,7 +18,7 @@ func GuessHQSystem(incursion ESI.IncursionResponse, esi ESI.ESIClient) (hqSystem
 		vanguards--
 		assaults++
 	}
-	logger.Infof("Staging %d, should be %d vanguards and %d assaults", incursion.StagingID, vanguards, assaults)
+	logger.Debugf("Staging %d, should be %d vanguards and %d assaults", incursion.StagingID, vanguards, assaults)
 
 	connections, _ := esi.GetSystemConnections(incursion.StagingID)
 	data := HQGuessData{

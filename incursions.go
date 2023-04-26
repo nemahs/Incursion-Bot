@@ -72,6 +72,7 @@ type Incursion struct {
 	Constellation NamedItem      // Constellation the incursion is in
 	StagingSystem NamedItem      // Name of the staging system
 	HQSystem      NamedItem      // Name of the HQ system
+	SovOwner      string         // TCU owner of the staging system
 	Influence     float64        // Influence of the incursion from 0 to 1 inclusive
 	Region        NamedItem      // Region the incursion is in
 	State         IncursionState // Current state of the incursion
@@ -87,7 +88,13 @@ func (inc *Incursion) Equal(other Incursion) bool {
 }
 
 func (inc *Incursion) ToString() string {
-	return fmt.Sprintf("%s {%.2f} (HQ: %s) (%s - %s)", inc.StagingSystem.Name, inc.SecStatus, inc.HQSystem.Name, inc.Constellation.Name, inc.Region.Name)
+	var sovString string
+
+	if inc.SovOwner != "" {
+		sovString = fmt.Sprintf("[%s] ", inc.SovOwner)
+	}
+
+	return fmt.Sprintf("%s %s{%.2f} (HQ: %s) (%s - %s)", inc.StagingSystem.Name, sovString, inc.SecStatus, inc.HQSystem.Name, inc.Constellation.Name, inc.Region.Name)
 }
 
 func (inc *Incursion) TimeLeftInSpawn() (time.Time, error) {

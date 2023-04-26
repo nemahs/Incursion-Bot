@@ -23,6 +23,7 @@ func pollESI(incursionChan chan<- IncursionList) {
 		}
 
 		incursionChan <- incursions
+		logger.Debugf("Sleeping until %s", nextPollTime.String())
 		time.Sleep(time.Until(nextPollTime))
 	}
 }
@@ -38,6 +39,10 @@ func getDistance(stagingID int, client ESI.ESIClient, resultChan chan<- int) {
 	resultChan <- distance
 }
 
+func getSov(systemID int, client ESI.ESIClient, resultChan chan<- string) {
+	resultChan <- GetSovOwner(systemID, &client)
+}
+
 func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incursion {
 	newIncursion := Incursion{
 		Constellation: NamedItem{ID: incursion.ConstellationID},
@@ -49,7 +54,9 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 	}
 
 	distanceChan := make(chan int)
+	sovChan := make(chan string)
 	go getDistance(incursion.StagingID, client, distanceChan)
+	go getSov(newIncursion.StagingSystem.ID, client, sovChan)
 
 	stagingData, err := client.GetSystemInfo(incursion.StagingID)
 	if err != nil {
@@ -77,6 +84,8 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) Incu
 	}
 
 	newIncursion.Distance = <-distanceChan
+
+	newIncursion.SovOwner = <-sovChan
 
 	newIncursion.Region.Name = names[constData.RegionID]
 

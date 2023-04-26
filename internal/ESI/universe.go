@@ -229,3 +229,24 @@ func (c *ESIClient) GetSystemConnections(systemID int) ([]StargateResponse, erro
 
 	return result, nil
 }
+
+type SovResponse struct {
+	Alliance    int `json:"alliance_id"`
+	Corporation int `json:"corporation_id"`
+	Faction     int `json:"faction_id"`
+	System      int `json:"system_ID"`
+}
+
+var sovCache CacheEntry
+
+func (c *ESIClient) GetSovMap() ([]SovResponse, error) {
+	var response []SovResponse
+	url := fmt.Sprintf("%s/sovereignty/map", c.baseURL)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return response, err
+	}
+
+	err = c.cachedCall(req, &sovCache, &response)
+	return response, err
+}
