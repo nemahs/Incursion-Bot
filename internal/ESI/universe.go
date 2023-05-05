@@ -1,6 +1,7 @@
 package ESI
 
 import (
+	logging "IncursionBot/internal/Logging"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -41,31 +42,31 @@ func (c *ESIClient) GetNames(ids []int) (NameMap, error) {
 	// Find the remaining names
 	data, err := json.Marshal(unknownIDs)
 	if err != nil {
-		errorLog.Println("Failed to marshal IDs into json", err)
+		logging.Errorln("Failed to marshal IDs into json", err)
 		return result, err
 	}
 
 	req, err := http.NewRequest("POST", c.baseURL+"/universe/names/", bytes.NewBuffer(data))
 	if err != nil {
-		errorLog.Println("Failed to create name request", req)
+		logging.Errorln("Failed to create name request", req)
 		return result, err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		errorLog.Println("Failed HTTP request for names", err)
+		logging.Errorln("Failed HTTP request for names", err)
 		return result, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		errorLog.Printf("Name endpoint returned a status code of %d: %s", resp.StatusCode, string(body))
+		logging.Errorf("Name endpoint returned a status code of %d: %s", resp.StatusCode, string(body))
 		return result, err
 	}
 
 	err = c.parseResults(resp, &responseData)
 	if err != nil {
-		errorLog.Println("Failed to parse name results", err)
+		logging.Errorln("Failed to parse name results", err)
 		return result, err
 	}
 
@@ -93,14 +94,14 @@ func (c *ESIClient) GetConstInfo(constID int) (ConstellationData, error) {
 	url := fmt.Sprintf("%s/universe/constellations/%d/", c.baseURL, constID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		errorLog.Printf("Failed to create constellation info request for id: %d", constID)
+		logging.Errorf("Failed to create constellation info request for id: %d", constID)
 		return response, err
 	}
 
 	cacheData := constDataCache[constID]
 	err = c.cachedCall(req, &cacheData, &response)
 	if err != nil {
-		errorLog.Println("Error occurred in getting the constellation data", err)
+		logging.Errorln("Error occurred in getting the constellation data", err)
 		return response, err
 	}
 
@@ -124,14 +125,14 @@ func (c *ESIClient) GetSystemInfo(systemID int) (SystemData, error) {
 	url := fmt.Sprintf("%s/universe/systems/%d/", c.baseURL, systemID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		errorLog.Println("An error occurred creating the system info request", err)
+		logging.Errorln("An error occurred creating the system info request", err)
 		return results, err
 	}
 
 	cacheData := systemCache[systemID]
 	err = c.cachedCall(req, &cacheData, &results)
 	if err != nil {
-		errorLog.Println("An error occurred getting system info", err)
+		logging.Errorln("An error occurred getting system info", err)
 		return results, err
 	}
 	results.SecurityClass = guessSecClass(results.SecStatus)
@@ -147,13 +148,13 @@ func (c *ESIClient) GetRouteLength(startSystem int, endSystem int) (int, error) 
 	url := fmt.Sprintf("%s/route/%d/%d/", c.baseURL, startSystem, endSystem)
 	resp, err := http.Get(url)
 	if err != nil {
-		errorLog.Println("Failed HTTP request for route length", err)
+		logging.Errorln("Failed HTTP request for route length", err)
 		return -1, err
 	}
 
 	err = c.parseResults(resp, &resultData)
 	if err != nil {
-		errorLog.Println("Error occurred parsing results", err)
+		logging.Errorln("Error occurred parsing results", err)
 		return -1, err
 	}
 

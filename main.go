@@ -3,6 +3,7 @@ package main
 import (
 	Chat "IncursionBot/internal/ChatClient"
 	jabber "IncursionBot/internal/ChatClient/JabberClient"
+	incursions "IncursionBot/internal/Incursions"
 	logging "IncursionBot/internal/Logging"
 	"bufio"
 	"flag"
@@ -16,10 +17,9 @@ const homeSystem int = 30004759 // 1DQ1-A
 const commandPrefix byte = '!'  // All commands must start with this prefix
 const timeFormat string = "Mon _2 Jan 15:04"
 
-var commandsMap CommandMap      // Map of all supported commands, their functions, and their help messages
-var logger logging.Logger       // Logger for the main application
-var startTime time.Time         // Time the bot was started
-var incManager IncursionManager // Manages known incursions and informs on state changes
+var commandsMap CommandMap                 // Map of all supported commands, their functions, and their help messages
+var startTime time.Time                    // Time the bot was started
+var incManager incursions.IncursionManager // Manages known incursions and informs on state changes
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
 func getHomeRegions() IDList {
@@ -39,7 +39,7 @@ func (list IDList) contains(val int) bool {
 }
 
 func mainLoop() {
-	incursionUpdateChan := make(chan IncursionList)
+	incursionUpdateChan := make(chan incursions.IncursionList)
 	firstRun := true
 	go pollESI(incursionUpdateChan)
 
@@ -57,7 +57,7 @@ func mainLoop() {
 }
 
 // Creates a notification message for a new incursion, creating a special message if the incursion is in a home region
-func getNewIncursionMsg(newIncursion Incursion) string {
+func getNewIncursionMsg(newIncursion incursions.Incursion) string {
 	if getHomeRegions().contains(newIncursion.Region.ID) {
 		return fmt.Sprintf(":siren: New incursion detected in a home region! %s - %d jumps :siren:", newIncursion.ToString(), newIncursion.Distance)
 	}
@@ -71,7 +71,7 @@ func pollChat(jabber Chat.ChatServer) {
 		msg, err := jabber.GetNextChatMessage()
 
 		if err != nil {
-			logger.Errorln("Error encountered receiving message: ", err)
+			logging.Errorln("Error encountered receiving message: ", err)
 			continue
 		}
 
@@ -83,7 +83,7 @@ func pollChat(jabber Chat.ChatServer) {
 		// Slice off the command prefix
 		function, present := commandsMap.GetFunction(msg.Text[1:])
 		if !present {
-			logger.Warningf("Unknown or unsupported command: %s", msg.Text)
+			logging.Warningf("Unknown or unsupported command: %s", msg.Text)
 			continue
 		}
 
@@ -140,7 +140,7 @@ func main() {
 	botNick := flag.String("nickname", "IncursionBot", "Name bot will connect to MUC with")
 	flag.Parse()
 
-	logger = logging.NewLogger(*debug)
+	logging.InitLogger(*debug)
 
 	if *userFile != "" {
 		userName, password = parseFile(*userFile)
@@ -155,20 +155,20 @@ func main() {
 		log.Fatalln("Failed initial connection to the server: ", err)
 	}
 
-	incManager = IncursionManager{
-		onNewIncursion: func(i Incursion) {
+	incManager = incursions.IncursionManager{
+		OnNewIncursion: func(i incursions.Incursion) {
 			msgText := getNewIncursionMsg(i)
-			logger.Infoln("Sending new incursion notification to chat")
+			logging.Infoln("Sending new incursion notification to chat")
 			client.BroadcastToDefaultChannel(msgText)
 		},
-		onIncursionUpdate: func(i Incursion) {
+		OnIncursionUpdate: func(i incursions.Incursion) {
 			msgText := fmt.Sprintf("Incursion in %s changed state to %s", i.ToString(), i.State)
-			logger.Infoln("Sending state change notification to chat")
+			logging.Infoln("Sending state change notification to chat")
 			client.BroadcastToDefaultChannel(msgText)
 		},
-		onIncursionDespawn: func(i Incursion) {
+		OnIncursionDespawn: func(i incursions.Incursion) {
 			msgText := fmt.Sprintf("Incursion in %s despawned", i.ToString())
-			logger.Infof("Sending despawn notification for %s", i.ToString())
+			logging.Infof("Sending despawn notification for %s", i.ToString())
 			client.BroadcastToDefaultChannel(msgText)
 		},
 	}

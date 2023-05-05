@@ -1,8 +1,8 @@
-package main
+package incursions
 
 type IncursionList []Incursion
 
-func (list *IncursionList) find(inc Incursion) *Incursion {
+func (list *IncursionList) Find(inc Incursion) *Incursion {
 	for i, incursion := range *list {
 		if incursion.StagingSystem.ID == inc.StagingSystem.ID {
 			return &(*list)[i]

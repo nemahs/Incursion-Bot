@@ -1,4 +1,4 @@
-package main
+package incursions
 
 import (
 	"testing"
@@ -29,11 +29,11 @@ func TestFind(t *testing.T) {
 
 	testList = append(testList, testIncursion)
 
-	assert.NotEmpty(t, testList.find(testIncursion))
+	assert.NotEmpty(t, testList.Find(testIncursion))
 
 	newIncursion := Incursion{
 		StagingSystem: NamedItem{ID: 2345},
 	}
 
-	assert.Empty(t, testList.find(newIncursion))
+	assert.Empty(t, testList.Find(newIncursion))
 }

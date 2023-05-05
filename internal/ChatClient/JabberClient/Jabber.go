@@ -20,8 +20,6 @@ type JabberConnection struct {
 	client   *xmpp.Client
 }
 
-var logger = logging.NewLogger(false) // TODO: Allow enabling of debug messages
-
 const retryDuration = time.Minute // Time to wait between reconnect attempts
 
 // Create a new jabber connection
@@ -41,7 +39,7 @@ func CreateNewJabberConnection(server string, channel string, username string, p
 // Connect to the configured server and the configured channel
 func (conn *JabberConnection) ConnectToChannel() error {
 	var err error
-	logger.Infof("Connecting to %s...", conn.server)
+	logging.Infof("Connecting to %s...", conn.server)
 	// The connection breaks if you try to initiate connected, better to let the server promote the connection to TLS
 	conn.client, err = xmpp.NewClientNoTLS(conn.server, conn.username, conn.password, false)
 
@@ -53,7 +51,7 @@ func (conn *JabberConnection) ConnectToChannel() error {
 	}
 
 	mucJID := fmt.Sprintf("%s@%s", conn.channel, conn.server)
-	logger.Infof("Joining %s as %s", mucJID, conn.nickname)
+	logging.Infof("Joining %s as %s", mucJID, conn.nickname)
 	_, err = conn.client.JoinMUCNoHistory(mucJID, conn.nickname)
 
 	return err
@@ -68,7 +66,7 @@ func (comm *JabberConnection) reconnectLoop() {
 		err := comm.ConnectToChannel()
 
 		if err != nil {
-			logger.Errorln("Failed to reconnect, waiting 1 min then trying again", err)
+			logging.Errorln("Failed to reconnect, waiting 1 min then trying again", err)
 		} else {
 			return
 		}
@@ -83,7 +81,7 @@ func (comm *JabberConnection) GetNextChatMessage() (Chat.ChatMsg, error) {
 
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				logger.Warningln("Connection to server is broken, attempting to reconnect")
+				logging.Warningln("Connection to server is broken, attempting to reconnect")
 				comm.reconnectLoop()
 				continue
 			}

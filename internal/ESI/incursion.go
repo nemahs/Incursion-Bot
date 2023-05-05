@@ -1,6 +1,7 @@
 package ESI
 
 import (
+	logging "IncursionBot/internal/Logging"
 	"net/http"
 	"time"
 )
@@ -19,13 +20,13 @@ func (c *ESIClient) GetIncursions() ([]IncursionResponse, time.Time, error) {
 	var result []IncursionResponse
 	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/incursions/", nil)
 	if err != nil {
-		errorLog.Println("Failed to create request for incursions", err)
+		logging.Errorln("Failed to create request for incursions", err)
 		return result, incursionsCache.ExpirationTime, err
 	}
 	err = c.cachedCall(req, &incursionsCache, &result)
 
 	if err != nil {
-		errorLog.Println("Error occured while getting incursions", err)
+		logging.Errorln("Error occured while getting incursions", err)
 		return result, incursionsCache.ExpirationTime, err
 	}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	Chat "IncursionBot/internal/ChatClient"
+	logging "IncursionBot/internal/Logging"
 	"fmt"
 	"time"
 )
@@ -11,7 +12,7 @@ func getUptime(msg Chat.ChatMsg) string {
 	currentUptime := time.Since(startTime).Truncate(time.Second)
 	msgText := fmt.Sprintf("Bot has been up for: %s", currentUptime)
 
-	logger.Infof("Sending uptime in response to a message from %s", msg.Sender)
+	logging.Infof("Sending uptime in response to a message from %s", msg.Sender)
 	return msgText
 }
 
@@ -19,7 +20,7 @@ func printESIStatus(msg Chat.ChatMsg) string {
 	var status string
 	// if ESI.CheckESI() { status = "GOOD" } else { status = "BAD" }
 	msgText := fmt.Sprintf("Connection to ESI is %s", status)
-	logger.Infof("Sending ESI status in response to a message from %s", msg.Sender)
+	logging.Infof("Sending ESI status in response to a message from %s", msg.Sender)
 	return msgText
 }
 
@@ -33,20 +34,20 @@ func listIncursions(msg Chat.ChatMsg) string {
 			incursion.Influence*100, // Convert to % for easier reading
 			incursion.State,
 			incursion.Distance,
-			incursion.TimeLeftString())
+			incursion.TimeLeftString(timeFormat))
 	}
 
-	logger.Infof("Sending current incursions in response to a message from %s", msg.Sender)
+	logging.Infof("Sending current incursions in response to a message from %s", msg.Sender)
 	return responseText
 }
 
 func nextSpawn(msg Chat.ChatMsg) string {
-	logger.Infof("Sending next spawn times in response to a message from %s", msg.Sender)
+	logging.Infof("Sending next spawn times in response to a message from %s", msg.Sender)
 	return incManager.NextSpawns()
 }
 
 func waitlistInstructions(msg Chat.ChatMsg) string {
-	logger.Infof("Sending waitlist instructions in response to a message from %s", msg.Sender)
+	logging.Infof("Sending waitlist instructions in response to a message from %s", msg.Sender)
 	return `To join the waitlist, check that a fleet is actively running, then x up in the imperium.incursions channel in-game with the ships that you have.
 Do not join the waitlist if you are not deployed to the HQ system. Do not move yourself.`
 }

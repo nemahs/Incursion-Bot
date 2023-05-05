@@ -1,19 +1,17 @@
 package ESI
 
 import (
+	logging "IncursionBot/internal/Logging"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"reflect"
 	"time"
 )
 
 const esiURL string = "https://esi.evetech.net/"
-
-var errorLog log.Logger
 
 type ESIClient struct {
 	baseURL string
@@ -28,7 +26,6 @@ func NewClientWithVersion(version string) ESIClient {
 }
 
 func init() {
-	errorLog = *log.New(os.Stderr, "ERR:", log.LUTC|log.LstdFlags)
 }
 
 // Parse JSON results from HTTP response into a given struct
@@ -108,7 +105,7 @@ func (c *ESIClient) CheckESI() bool {
 	resp, err := http.Get(url)
 
 	if err != nil {
-		errorLog.Println("Error occurred querying ESI:", err)
+		logging.Errorln("Error occurred querying ESI:", err)
 		return false
 	}
 

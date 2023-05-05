@@ -1,6 +1,9 @@
 package main
 
-import "IncursionBot/internal/ESI"
+import (
+	"IncursionBot/internal/ESI"
+	logging "IncursionBot/internal/Logging"
+)
 
 func GetSovOwner(systemID int, esi *ESI.ESIClient) string {
 	result := ""
@@ -8,7 +11,7 @@ func GetSovOwner(systemID int, esi *ESI.ESIClient) string {
 	sovList, err := esi.GetSovMap()
 
 	if err != nil {
-		logger.Errorln("Error occurred getting sov map", err)
+		logging.Errorln("Error occurred getting sov map", err)
 		return ""
 	}
 
@@ -22,12 +25,12 @@ func GetSovOwner(systemID int, esi *ESI.ESIClient) string {
 			allianceData, err := esi.GetAllianceData(sov.Alliance)
 
 			if err != nil {
-				logger.Errorln("Error occurred getting alliance data", err)
+				logging.Errorln("Error occurred getting alliance data", err)
 				return ""
 			}
 
 			result = allianceData.Ticker
-			logger.Infof("Guessed sov owner was %s", result)
+			logging.Infof("Guessed sov owner was %s", result)
 			break
 		}
 	}
