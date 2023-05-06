@@ -1,6 +1,7 @@
 package incursions
 
 import (
+	"IncursionBot/internal/ESI"
 	logging "IncursionBot/internal/Logging"
 	"fmt"
 	"sync"
@@ -31,7 +32,7 @@ func (manager *IncursionManager) NextSpawns() string {
 		manager.lowTracker.nextRespawn())
 }
 
-func (manager *IncursionManager) PopulateIncursions(initialList IncursionList) {
+func (manager *IncursionManager) PopulateIncursions(initialList IncursionList, client *ESI.ESIClient) {
 	var toSave IncursionList
 
 	for _, incursion := range initialList {
@@ -39,6 +40,7 @@ func (manager *IncursionManager) PopulateIncursions(initialList IncursionList) {
 			continue
 		}
 
+		incursion.Layout = GenerateIncursionLayout(&incursion, client)
 		logging.Infof("Found initial incursion in %s", incursion.ToString())
 		toSave = append(toSave, incursion)
 	}
@@ -48,7 +50,7 @@ func (manager *IncursionManager) PopulateIncursions(initialList IncursionList) {
 	manager.incursionMut.Unlock()
 }
 
-func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) {
+func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList, client *ESI.ESIClient) {
 	var toSave IncursionList
 	logging.Infoln("------Processing new set of incursions-----")
 
@@ -61,7 +63,7 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 
 		if existingIncursion == nil {
 			if !incursion.IsValid {
-				logging.Errorf("Received an invalid incursion located in %d, discarding...", incursion.StagingSystem.ID)
+				logging.Errorf("Received an invalid incursion located in %d, discarding...", incursion.Layout.StagingSystem.ID)
 				continue
 			}
 			incursion.StateChanged = time.Now()
@@ -72,10 +74,17 @@ func (manager *IncursionManager) ProcessIncursions(newIncursions IncursionList) 
 				manager.lowTracker.Spawn(incursion)
 			}
 
+			incursion.Layout = GenerateIncursionLayout(&incursion, client)
 			manager.OnNewIncursion(incursion)
 			toSave = append(toSave, incursion)
 		} else {
 			logging.Infof("Found existing incursion in %s to update", existingIncursion.ToString())
+
+			// Attempt to regenerate the spawn layout if generation was interrupted by ESI/networking previously
+			if !existingIncursion.Layout.IsComplete() {
+				incursion.Layout = GenerateIncursionLayout(existingIncursion, client)
+			}
+
 			if existingIncursion.Update(incursion.Influence, incursion.State) {
 				existingIncursion.StateChanged = time.Now()
 

@@ -4,6 +4,7 @@ import (
 	Chat "IncursionBot/internal/ChatClient"
 	logging "IncursionBot/internal/Logging"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -50,4 +51,31 @@ func waitlistInstructions(msg Chat.ChatMsg) string {
 	logging.Infof("Sending waitlist instructions in response to a message from %s", msg.Sender)
 	return `To join the waitlist, check that a fleet is actively running, then x up in the imperium.incursions channel in-game with the ships that you have.
 Do not join the waitlist if you are not deployed to the HQ system. Do not move yourself.`
+}
+
+func printLayout(msg Chat.ChatMsg) string {
+	incursions := incManager.GetIncursions()
+
+	name := strings.Fields(msg.Text)[1]
+	logging.Debugln(name)
+
+	for _, incursion := range incursions {
+		if incursion.Layout.StagingSystem.Name == name || incursion.Constellation.Name == name {
+			resultText := "\n"
+
+			resultText += "Staging: " + incursion.Layout.StagingSystem.Name + "\n"
+			for _, vanguard := range incursion.Layout.VanguardSystems {
+				resultText += "Vanguard: " + vanguard.Name + "\n"
+			}
+
+			for _, assault := range incursion.Layout.AssaultSystems {
+				resultText += "Assault: " + assault.Name + "\n"
+			}
+
+			resultText += "HQ: " + incursion.Layout.HQSystem.Name + "\n"
+			return resultText
+		}
+	}
+
+	return "No spawn found"
 }

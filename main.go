@@ -3,6 +3,7 @@ package main
 import (
 	Chat "IncursionBot/internal/ChatClient"
 	jabber "IncursionBot/internal/ChatClient/JabberClient"
+	"IncursionBot/internal/ESI"
 	incursions "IncursionBot/internal/Incursions"
 	logging "IncursionBot/internal/Logging"
 	"bufio"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -20,6 +22,7 @@ const timeFormat string = "Mon _2 Jan 15:04"
 var commandsMap CommandMap                 // Map of all supported commands, their functions, and their help messages
 var startTime time.Time                    // Time the bot was started
 var incManager incursions.IncursionManager // Manages known incursions and informs on state changes
+var esi ESI.ESIClient
 
 // Returns goon home regions (currently Delve, Querious, and Period Basis)
 func getHomeRegions() IDList {
@@ -47,9 +50,9 @@ func mainLoop() {
 		newUpdates := <-incursionUpdateChan
 
 		if firstRun {
-			incManager.PopulateIncursions(newUpdates)
+			incManager.PopulateIncursions(newUpdates, &esi)
 		} else {
-			incManager.ProcessIncursions(newUpdates)
+			incManager.ProcessIncursions(newUpdates, &esi)
 		}
 
 		firstRun = false
@@ -81,7 +84,8 @@ func pollChat(jabber Chat.ChatServer) {
 		}
 
 		// Slice off the command prefix
-		function, present := commandsMap.GetFunction(msg.Text[1:])
+		command := strings.Fields(msg.Text)[0]
+		function, present := commandsMap.GetFunction(command[1:])
 		if !present {
 			logging.Warningf("Unknown or unsupported command: %s", msg.Text)
 			continue
@@ -126,6 +130,7 @@ func init() {
 	//	commandsMap.AddCommand("esi", printESIStatus, "Prints the bot's ESI connection status")   REMOVED UNTIL IMPLEMENTED
 	commandsMap.AddCommand("nextspawn", nextSpawn, "Lists the start of the next spawn window for null and low incursions")
 	commandsMap.AddCommand("waitlist", waitlistInstructions, "Explains how to join the manual waitlist while the waitlist site is down")
+	commandsMap.AddCommand("layout", printLayout, "Prints the calculated layout of the given spawn")
 }
 
 func main() {
@@ -141,6 +146,7 @@ func main() {
 	flag.Parse()
 
 	logging.InitLogger(*debug)
+	esi = ESI.NewClient()
 
 	if *userFile != "" {
 		userName, password = parseFile(*userFile)

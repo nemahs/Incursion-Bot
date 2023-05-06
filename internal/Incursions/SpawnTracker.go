@@ -103,11 +103,11 @@ func (tracker *SpawnTracker) nextRespawn() string {
 
 	toCheck := append(tracker.currentIncursions, tracker.respawningIncursions...)
 	for _, incursion := range toCheck {
-		logging.Debugf("Considering %s", incursion.StagingSystem.Name)
+		logging.Debugf("Considering %s", incursion.Layout.StagingSystem.Name)
 		logging.Debugf("State: %s", incursion.State)
 		respawnTime := respawnTime(incursion)
 		if !respawnTime.IsZero() && (respawnTime.Before(nextRespawnTime) || nextRespawnTime.IsZero()) {
-			logging.Debugf("%s now the next to respawn", incursion.StagingSystem.Name)
+			logging.Debugf("%s now the next to respawn", incursion.Layout.StagingSystem.Name)
 			nextToRespawn = incursion
 			nextRespawnTime = respawnTime
 		}
@@ -117,7 +117,7 @@ func (tracker *SpawnTracker) nextRespawn() string {
 		return unknownString
 	}
 
-	logging.Infof("Picked %s as next to respawn, respawn time %s", nextToRespawn.StagingSystem.Name, nextRespawnTime)
+	logging.Infof("Picked %s as next to respawn, respawn time %s", nextToRespawn.Layout.StagingSystem.Name, nextRespawnTime)
 	switch nextToRespawn.State {
 	case Established:
 		return fmt.Sprintf("No more than %s", formatDuration(time.Until(nextRespawnTime)))

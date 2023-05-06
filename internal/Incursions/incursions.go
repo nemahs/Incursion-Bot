@@ -1,6 +1,7 @@
 package incursions
 
 import (
+	"IncursionBot/internal/ESI"
 	logging "IncursionBot/internal/Logging"
 	"fmt"
 	"strings"
@@ -41,23 +42,38 @@ type NamedItem struct {
 	ID   int
 }
 
+func CreateNamedItem(id int, esi *ESI.ESIClient) (item NamedItem) {
+	item.ID = id
+	item.Name = "Unknown" // Default value
+
+	name, err := esi.GetNames([]int{id})
+
+	if err != nil {
+		logging.Errorf("Error occurred getting name for %d: %v", id, err)
+		return
+	}
+
+	item.Name = name[id]
+	return
+}
+
 type Incursion struct {
-	Constellation NamedItem      // Constellation the incursion is in
-	StagingSystem NamedItem      // Name of the staging system
-	HQSystem      NamedItem      // Name of the HQ system
-	SovOwner      string         // TCU owner of the staging system
-	Influence     float64        // Influence of the incursion from 0 to 1 inclusive
-	Region        NamedItem      // Region the incursion is in
-	State         IncursionState // Current state of the incursion
-	Security      SecurityClass  // Security type of the staging system
-	SecStatus     float64        // Security status of the staging system, -1 to 1 inclusive
-	Distance      int            // Distance from home system
-	StateChanged  time.Time      // Time the state changed to this current state
+	Constellation NamedItem       // Constellation the incursion is in
+	Layout        IncursionLayout // Layout of the spawn
+	SovOwner      string          // TCU owner of the staging system
+	Influence     float64         // Influence of the incursion from 0 to 1 inclusive
+	Region        NamedItem       // Region the incursion is in
+	State         IncursionState  // Current state of the incursion
+	Security      SecurityClass   // Security type of the staging system
+	SecStatus     float64         // Security status of the staging system, -1 to 1 inclusive
+	Distance      int             // Distance from home system
+	StateChanged  time.Time       // Time the state changed to this current state
+	Systems       []int           // IDs for all systems in the spawn
 	IsValid       bool
 }
 
 func (inc *Incursion) Equal(other Incursion) bool {
-	return inc.StagingSystem.ID == other.StagingSystem.ID
+	return inc.Layout.StagingSystem.ID == other.Layout.StagingSystem.ID
 }
 
 func (inc *Incursion) ToString() string {
@@ -67,7 +83,13 @@ func (inc *Incursion) ToString() string {
 		sovString = fmt.Sprintf("[%s] ", inc.SovOwner)
 	}
 
-	return fmt.Sprintf("%s %s{%.2f} (HQ: %s) (%s - %s)", inc.StagingSystem.Name, sovString, inc.SecStatus, inc.HQSystem.Name, inc.Constellation.Name, inc.Region.Name)
+	return fmt.Sprintf("%s %s{%.2f} (HQ: %s) (%s - %s)",
+		inc.Layout.StagingSystem.Name,
+		sovString,
+		inc.SecStatus,
+		inc.Layout.HQSystem.Name,
+		inc.Constellation.Name,
+		inc.Region.Name)
 }
 
 func (inc *Incursion) TimeLeftInSpawn() (time.Time, error) {
@@ -92,7 +114,7 @@ func (inc *Incursion) TimeLeftString(timeFormat string) string {
 
 	despawn, err := inc.TimeLeftInSpawn()
 	if err != nil {
-		logging.Errorf("Error occurred getting time left in spawn %s: %s", inc.StagingSystem.Name, err)
+		logging.Errorf("Error occurred getting time left in spawn %s: %s", inc.Layout.StagingSystem.Name, err)
 		return "Unknown"
 	}
 

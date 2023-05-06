@@ -24,7 +24,7 @@ func TestUpdateIncursion(t *testing.T) {
 func TestFind(t *testing.T) {
 	var testList IncursionList
 	testIncursion := Incursion{
-		StagingSystem: NamedItem{ID: 1234},
+		Layout: IncursionLayout{StagingSystem: NamedItem{ID: 1234}},
 	}
 
 	testList = append(testList, testIncursion)
@@ -32,7 +32,7 @@ func TestFind(t *testing.T) {
 	assert.NotEmpty(t, testList.Find(testIncursion))
 
 	newIncursion := Incursion{
-		StagingSystem: NamedItem{ID: 2345},
+		Layout: IncursionLayout{StagingSystem: NamedItem{ID: 2345}},
 	}
 
 	assert.Empty(t, testList.Find(newIncursion))

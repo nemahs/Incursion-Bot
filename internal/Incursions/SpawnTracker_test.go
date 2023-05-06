@@ -1,6 +1,7 @@
 package incursions
 
 import (
+	logging "IncursionBot/internal/Logging"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ func TestRespawnTime(t *testing.T) {
 	assert := assert.New(t)
 	testInc := Incursion{}
 	testInc.StateChanged = time.Now()
+	logging.InitLogger(true)
 
 	t.Run("Established Respawn", func(t *testing.T) {
 		testInc.State = Established
@@ -52,6 +54,7 @@ func TestRespawnTime(t *testing.T) {
 
 func TestNextRespawn(t *testing.T) {
 	assert := assert.New(t)
+	logging.InitLogger(true)
 	var testSubject SpawnTracker
 	testTime := time.Now()
 	timeOne := formatDuration(36*time.Hour - time.Second)
@@ -90,9 +93,12 @@ func TestNextRespawn(t *testing.T) {
 func TestIncursionManagement(t *testing.T) {
 	assert := assert.New(t)
 	var testSubject SpawnTracker
+	logging.InitLogger(true)
 
 	t.Run("Spawn incursion", func(t *testing.T) {
-		newInc := Incursion{StagingSystem: NamedItem{ID: 1}}
+		newInc := Incursion{
+			Layout: IncursionLayout{StagingSystem: NamedItem{ID: 1}},
+		}
 		testSubject.Spawn(newInc)
 
 		assert.Equal(1, len(testSubject.currentIncursions))
@@ -100,7 +106,11 @@ func TestIncursionManagement(t *testing.T) {
 	})
 
 	t.Run("Update incursion", func(t *testing.T) {
-		updateInc := Incursion{StagingSystem: NamedItem{ID: 1}, State: Mobilizing, StateChanged: time.Now()}
+		updateInc := Incursion{
+			Layout:       IncursionLayout{StagingSystem: NamedItem{ID: 1}},
+			State:        Mobilizing,
+			StateChanged: time.Now(),
+		}
 		testSubject.Update(updateInc)
 
 		assert.Equal(1, len(testSubject.currentIncursions))
@@ -109,30 +119,38 @@ func TestIncursionManagement(t *testing.T) {
 	})
 
 	t.Run("Update non-existing", func(t *testing.T) {
-		newInc := Incursion{StagingSystem: NamedItem{ID: 2}, State: Withdrawing, StateChanged: time.Now()}
+		newInc := Incursion{
+			Layout:       IncursionLayout{StagingSystem: NamedItem{ID: 2}},
+			State:        Withdrawing,
+			StateChanged: time.Now(),
+		}
 		testSubject.Update(newInc)
 
 		assert.Equal(2, len(testSubject.currentIncursions))
 		assert.Empty(testSubject.respawningIncursions)
-		assert.Equal(2, testSubject.currentIncursions[1].StagingSystem.ID)
+		assert.Equal(2, testSubject.currentIncursions[1].Layout.StagingSystem.ID)
 		assert.Equal(Withdrawing, testSubject.currentIncursions[1].State)
 		assert.NotZero(testSubject.currentIncursions[1].StateChanged)
 	})
 
 	t.Run("Despawn", func(t *testing.T) {
-		deadInc := Incursion{StagingSystem: NamedItem{ID: 1}}
+		deadInc := Incursion{
+			Layout: IncursionLayout{StagingSystem: NamedItem{ID: 1}},
+		}
 		testSubject.Despawn(deadInc)
 
 		assert.Equal(1, len(testSubject.currentIncursions))
 		assert.Equal(1, len(testSubject.respawningIncursions))
-		assert.Equal(1, testSubject.respawningIncursions[0].StagingSystem.ID)
-		assert.Equal(2, testSubject.currentIncursions[0].StagingSystem.ID)
+		assert.Equal(1, testSubject.respawningIncursions[0].Layout.StagingSystem.ID)
+		assert.Equal(2, testSubject.currentIncursions[0].Layout.StagingSystem.ID)
 		assert.Equal(Respawning, testSubject.respawningIncursions[0].State)
 		assert.NotZero(testSubject.respawningIncursions[0].StateChanged)
 	})
 
 	t.Run("Respawn", func(t *testing.T) {
-		newInc := Incursion{StagingSystem: NamedItem{ID: 3}}
+		newInc := Incursion{
+			Layout: IncursionLayout{StagingSystem: NamedItem{ID: 3}},
+		}
 		testSubject.Spawn(newInc)
 
 		assert.Equal(2, len(testSubject.currentIncursions))

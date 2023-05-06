@@ -4,7 +4,7 @@ type IncursionList []Incursion
 
 func (list *IncursionList) Find(inc Incursion) *Incursion {
 	for i, incursion := range *list {
-		if incursion.StagingSystem.ID == inc.StagingSystem.ID {
+		if incursion.Equal(inc) {
 			return &(*list)[i]
 		}
 	}

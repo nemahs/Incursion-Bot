@@ -8,8 +8,6 @@ import (
 )
 
 func pollESI(incursionChan chan<- incursions.IncursionList) {
-	esi := ESI.NewClient()
-
 	for {
 		incursionResponses, nextPollTime, err := esi.GetIncursions()
 		if err != nil {
@@ -48,7 +46,6 @@ func getSov(systemID int, client ESI.ESIClient, resultChan chan<- string) {
 func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) incursions.Incursion {
 	newIncursion := incursions.Incursion{
 		Constellation: incursions.NamedItem{ID: incursion.ConstellationID},
-		StagingSystem: incursions.NamedItem{ID: incursion.StagingID},
 		Influence:     incursion.Influence,
 		State:         incursions.ParseState(incursion.State),
 		StateChanged:  time.Time{},
@@ -58,21 +55,21 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) incu
 	distanceChan := make(chan int)
 	sovChan := make(chan string)
 	go getDistance(incursion.StagingID, client, distanceChan)
-	go getSov(newIncursion.StagingSystem.ID, client, sovChan)
+	go getSov(incursion.StagingID, client, sovChan)
 
+	newIncursion.Layout.StagingSystem = incursions.CreateNamedItem(incursion.StagingID, &client)
 	stagingData, err := client.GetSystemInfo(incursion.StagingID)
 	if err != nil {
-		logging.Errorf("Ran into error when getting system data for incursion in %d", newIncursion.StagingSystem.ID)
+		logging.Errorf("Ran into error when getting system data for incursion in %d", incursion.StagingID)
 		return newIncursion
 	}
 
-	newIncursion.StagingSystem.Name = stagingData.Name
 	newIncursion.SecStatus = stagingData.SecStatus
 	newIncursion.Security = incursions.ParseSecurityClass(newIncursion.SecStatus)
 
 	constData, err := client.GetConstInfo(incursion.ConstellationID)
 	if err != nil {
-		logging.Errorf("Ran into error when getting system data for incursion in %d", newIncursion.StagingSystem.ID)
+		logging.Errorf("Ran into error when getting system data for incursion in %d", incursion.StagingID)
 		return newIncursion
 	}
 
@@ -81,7 +78,7 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) incu
 
 	names, err := client.GetNames([]int{constData.RegionID})
 	if err != nil {
-		logging.Errorf("Ran into error when getting system data for incursion in %d", newIncursion.StagingSystem.ID)
+		logging.Errorf("Ran into error when getting system data for incursion in %d", incursion.StagingID)
 		return newIncursion
 	}
 
@@ -93,7 +90,7 @@ func createIncursion(incursion ESI.IncursionResponse, client ESI.ESIClient) incu
 
 	newIncursion.IsValid = true
 
-	newIncursion.HQSystem = incursions.GuessHQSystem(incursion, client)
+	newIncursion.Systems = incursion.IncursionSystems
 
 	return newIncursion
 }
