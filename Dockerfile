@@ -1,12 +1,13 @@
-FROM golang:latest
+FROM golang:alpine AS builder
 
 WORKDIR /app
+RUN --mount=type=bind,source=.,target=. go build -o /IncursionBot .
 
-COPY go.mod go.sum ./
-RUN go mod download && go mod verify
 
-COPY . .
-RUN go build .
-
+# Production container
+FROM alpine:latest
+RUN addgroup -S incursions && adduser -S -G incursions incursions
+USER incursions
+COPY --from=builder --chmod=555 /IncursionBot /IncursionBot
 ENTRYPOINT [ "./IncursionBot" ]
 CMD [ "--debug" ]

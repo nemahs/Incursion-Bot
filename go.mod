@@ -1,6 +1,6 @@
 module IncursionBot
 
-go 1.18
+go 1.23
 
 require (
 	github.com/mattn/go-xmpp v0.0.0-20220712221724-2eb234970ce7
