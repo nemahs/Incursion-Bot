@@ -1,15 +1,21 @@
-version: '3.9'
-
 services:
   incursion-bot:
     build: .
-    command: ['--file', '/run/secrets/userData', '--chat', 'testbot']
+    image: nemahs.org/incursion-bot
+    command: ['--file', '/run/secrets/userData', '-chat', 'incursions', '-nickname', 'IncursionBot' ]
     secrets:
       - userData
     restart: on-failure
     logging:
       driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    deploy:
+      replicas: 1
 
 secrets:
   userData:
-    file: /home/nemahs/userData
+    external:
+      true
