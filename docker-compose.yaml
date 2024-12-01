@@ -1,7 +1,7 @@
 services:
   incursion-bot:
     build: .
-    image: nemahs.org/incursion-bot
+    image: registry.nemahs.org/incursion-bot
     command: ['--file', '/run/secrets/userData', '-chat', 'incursions', '-nickname', 'IncursionBot' ]
     secrets:
       - userData
